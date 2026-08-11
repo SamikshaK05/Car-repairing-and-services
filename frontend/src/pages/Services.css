@@ -1,0 +1,330 @@
+/* Services Page Styles */
+
+.services-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4.5rem;
+  padding-bottom: 3rem;
+}
+
+/* SECTION 1: HERO */
+.services-hero {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 3rem 2.5rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.breadcrumb a {
+  color: var(--primary-accent);
+  transition: var(--transition);
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.services-hero-title {
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  letter-spacing: -0.02em;
+}
+
+.services-hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+/* SECTION 2: CATEGORY FILTER */
+.filter-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background-color: var(--white);
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-btn {
+  padding: 0.65rem 1.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.filter-btn:hover {
+  color: var(--primary-dark);
+  background-color: var(--bg-light);
+}
+
+.filter-btn.active {
+  color: var(--white);
+  background-color: var(--primary-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+/* SECTION 3 & 5: SERVICE GRID */
+.services-grid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+  align-items: stretch;
+}
+
+.no-services-found {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem;
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+/* SECTION 6: WHY PROFESSIONAL CAR SERVICE MATTERS */
+.why-pro-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 3rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.why-pro-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.why-pro-content h2 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  line-height: 1.2;
+}
+
+.why-pro-content p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.why-pro-points {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.why-pro-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background-color: var(--bg-light);
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.point-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: rgba(249, 115, 22, 0.15);
+  color: var(--primary-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.point-info h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 0.25rem;
+}
+
+.point-info p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.why-pro-visual img {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* SECTION 7: SERVICE PROCESS */
+.services-process-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+/* SECTION 8: FINAL CTA */
+.services-cta-card {
+  background-color: var(--primary-dark);
+  border-radius: 16px;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.services-cta-card h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.02em;
+}
+
+.services-cta-card p {
+  font-size: 1.15rem;
+  color: #94A3B8;
+  max-width: 550px;
+}
+
+.services-cta-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.btn-cta-contact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+  background-color: var(--primary-accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+  transition: var(--transition);
+  text-decoration: none;
+}
+
+.btn-cta-contact:hover {
+  background-color: var(--primary-accent-hover);
+  transform: translateY(-2px);
+}
+
+.btn-cta-centers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  text-decoration: none;
+}
+
+.btn-cta-centers:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+}
+
+/* RESPONSIVE BREAKPOINTS */
+@media (max-width: 1024px) {
+  .services-grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .why-pro-section {
+    grid-template-columns: 1fr;
+    padding: 2rem;
+  }
+
+  .why-pro-visual img {
+    height: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .services-page-container {
+    gap: 3.5rem;
+  }
+
+  .services-hero {
+    padding: 2rem 1.5rem;
+  }
+
+  .services-hero-title {
+    font-size: 2rem;
+  }
+
+  .filter-bar {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .services-grid-container {
+    grid-template-columns: 1fr;
+  }
+
+  .services-cta-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-cta-contact, .btn-cta-centers {
+    width: 100%;
+  }
+}

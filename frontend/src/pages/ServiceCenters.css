@@ -1,0 +1,307 @@
+/* Service Centers Page Styles */
+
+.centers-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4.5rem;
+  padding-bottom: 3rem;
+}
+
+/* SECTION 1: HERO */
+.centers-hero {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 3rem 2.5rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.centers-hero-title {
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  letter-spacing: -0.02em;
+}
+
+.centers-hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  max-width: 650px;
+  line-height: 1.6;
+}
+
+/* SECTION 2: SEARCH & FILTER */
+.search-filter-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.search-filter-controls {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-secondary);
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  font-size: 0.98rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: var(--transition);
+  color: var(--primary-dark);
+}
+
+.search-input:focus {
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.category-select {
+  padding: 0.85rem 1rem;
+  font-size: 0.98rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  background-color: var(--white);
+  color: var(--primary-dark);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.category-select:focus {
+  border-color: var(--primary-accent);
+}
+
+.btn-search {
+  padding: 0.85rem 1.5rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--white);
+  background-color: var(--primary-accent);
+  border: 1px solid var(--primary-accent);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-search:hover {
+  background-color: var(--primary-accent-hover);
+}
+
+.btn-reset {
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--bg-light);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.btn-reset:hover {
+  color: var(--primary-dark);
+  border-color: #CBD5E1;
+}
+
+.results-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.25rem;
+}
+
+.results-count {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+/* SECTION 3 & 5: SERVICE CENTER GRID */
+.centers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+  align-items: stretch;
+}
+
+.no-centers-found {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.no-centers-found h3 {
+  font-size: 1.35rem;
+  color: var(--primary-dark);
+}
+
+.no-centers-found p {
+  color: var(--text-secondary);
+  max-width: 400px;
+}
+
+/* SECTION 6: MAP PLACEHOLDER */
+.map-placeholder-section {
+  background-color: var(--primary-dark);
+  border-radius: 16px;
+  padding: 3.5rem 2.5rem;
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.map-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.map-header h2 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--white);
+  margin-bottom: 0.5rem;
+}
+
+.map-header p {
+  font-size: 1.05rem;
+  color: #94A3B8;
+}
+
+.map-mockup-card {
+  height: 320px;
+  background-color: #1E293B;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.map-pins-demo {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.map-pin-item {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--primary-accent);
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  color: var(--white);
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pin-1 { top: 30%; left: 32%; }
+.pin-2 { top: 55%; left: 48%; }
+.pin-3 { top: 40%; left: 68%; }
+
+.map-badge-soon {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--white);
+  color: var(--primary-dark);
+  padding: 0.75rem 1.5rem;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: var(--shadow-md);
+  border: 2px solid var(--primary-accent);
+}
+
+/* RESPONSIVE STYLES */
+@media (max-width: 1024px) {
+  .centers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .search-filter-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .btn-search, .btn-reset {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .centers-page-container {
+    gap: 3.5rem;
+  }
+
+  .centers-hero {
+    padding: 2rem 1.5rem;
+  }
+
+  .centers-hero-title {
+    font-size: 2rem;
+  }
+
+  .search-filter-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .centers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pin-3 { display: none; }
+}
