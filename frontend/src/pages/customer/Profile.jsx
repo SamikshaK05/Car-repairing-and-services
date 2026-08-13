@@ -1,21 +1,31 @@
-import { useState } from 'react';
-import { User, Mail, Phone, MapPin, Edit3, KeyRound, CheckCircle2, X } from 'lucide-react';
-import { INITIAL_CUSTOMER_PROFILE } from '../../data/customerData';
+import { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Edit3, KeyRound, CheckCircle2, X, Loader2, ShieldCheck } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Profile() {
-  const [profile, setProfile] = useState(INITIAL_CUSTOMER_PROFILE);
+  const { user, loading } = useAuth();
+  const [successMsg, setSuccessMsg] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
 
-  const [editData, setEditData] = useState({ ...profile });
+  const [editData, setEditData] = useState({ name: '', email: '', phone: '', location: 'Pune, Maharashtra' });
   const [passData, setPassData] = useState({ currentPass: '', newPass: '', confirmPass: '' });
+
+  useEffect(() => {
+    if (user) {
+      setEditData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        location: 'Pune, Maharashtra',
+      });
+    }
+  }, [user]);
 
   const handleEditSubmit = (e) => {
     e.preventDefault();
-    setProfile({ ...editData });
     setShowEditModal(false);
-    setSuccessMsg('Profile information updated successfully.');
+    setSuccessMsg('Profile edit UI submitted (Backend profile update endpoint is not present).');
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
@@ -23,9 +33,33 @@ export default function Profile() {
     e.preventDefault();
     setShowPassModal(false);
     setPassData({ currentPass: '', newPass: '', confirmPass: '' });
-    setSuccessMsg('Password changed successfully (Demo UI).');
+    setSuccessMsg('Password change UI submitted (Backend password endpoint is not present).');
     setTimeout(() => setSuccessMsg(''), 4000);
   };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '4rem 2rem', textAlign: 'center', backgroundColor: 'var(--white)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+        <Loader2 size={36} className="spinning-loader" style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-accent)' }} />
+        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading profile information...</p>
+      </div>
+    );
+  }
+
+  const currentUser = user || {
+    name: 'Customer',
+    email: 'N/A',
+    phone: 'N/A',
+    role: 'CUSTOMER',
+    createdAt: new Date(),
+  };
+
+  const memberSinceDate = currentUser.createdAt
+    ? new Date(currentUser.createdAt).toLocaleDateString('en-IN', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : '2026';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -49,7 +83,6 @@ export default function Profile() {
 
       {/* PROFILE DETAILS GRID */}
       <div className="profile-grid">
-
         {/* PERSONAL & CONTACT INFORMATION */}
         <div
           style={{
@@ -70,10 +103,7 @@ export default function Profile() {
             <button
               type="button"
               className="btn-card-secondary"
-              onClick={() => {
-                setEditData({ ...profile });
-                setShowEditModal(true);
-              }}
+              onClick={() => setShowEditModal(true)}
               style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
             >
               <Edit3 size={15} style={{ marginRight: '0.3rem' }} /> Edit Profile
@@ -87,7 +117,7 @@ export default function Profile() {
               </div>
               <div>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Full Name</span>
-                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{profile.name}</strong>
+                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{currentUser.name}</strong>
               </div>
             </div>
 
@@ -97,7 +127,7 @@ export default function Profile() {
               </div>
               <div>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Email Address</span>
-                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{profile.email}</strong>
+                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{currentUser.email}</strong>
               </div>
             </div>
 
@@ -107,7 +137,7 @@ export default function Profile() {
               </div>
               <div>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Phone Number</span>
-                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{profile.phone}</strong>
+                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{currentUser.phone || 'Not provided'}</strong>
               </div>
             </div>
 
@@ -117,7 +147,7 @@ export default function Profile() {
               </div>
               <div>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Location</span>
-                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{profile.location}</strong>
+                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{editData.location}</strong>
               </div>
             </div>
           </div>
@@ -148,7 +178,10 @@ export default function Profile() {
 
           <div style={{ padding: '1rem', backgroundColor: 'var(--bg-light)', borderRadius: '10px', fontSize: '0.88rem' }}>
             <span style={{ color: 'var(--text-secondary)', display: 'block' }}>Member Status</span>
-            <strong style={{ color: 'var(--primary-dark)' }}>Active Customer (Member since {profile.memberSince})</strong>
+            <strong style={{ color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+              <ShieldCheck size={16} color="var(--primary-accent)" />
+              Active {currentUser.role} (Member since {memberSinceDate})
+            </strong>
           </div>
 
           <div>
