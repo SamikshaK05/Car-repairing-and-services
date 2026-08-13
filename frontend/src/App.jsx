@@ -26,6 +26,7 @@ import Invoices from './pages/customer/Invoices';
 import Profile from './pages/customer/Profile';
 
 import AdminLayout from './layouts/AdminLayout';
+import MechanicLayout from './layouts/MechanicLayout';
 
 // Lazy-loaded Admin Page Modules for Route-Level Code Splitting
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
@@ -37,6 +38,12 @@ const AdminServiceCenters = lazy(() => import('./pages/admin/ServiceCenters'));
 const AdminInvoices = lazy(() => import('./pages/admin/Invoices'));
 const AdminReviews = lazy(() => import('./pages/admin/Reviews'));
 const AdminVehicles = lazy(() => import('./pages/admin/Vehicles'));
+
+// Lazy-loaded Mechanic Page Modules for Route-Level Code Splitting
+const MechanicDashboard = lazy(() => import('./pages/mechanic/Dashboard'));
+const MechanicJobs = lazy(() => import('./pages/mechanic/Jobs'));
+const MechanicJobDetails = lazy(() => import('./pages/mechanic/JobDetails'));
+const MechanicProfile = lazy(() => import('./pages/mechanic/Profile'));
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -59,6 +66,15 @@ function AdminLoadingFallback() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '55vh', flexDirection: 'column', gap: '1rem' }}>
       <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-accent)' }} />
       <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Loading Admin Module...</span>
+    </div>
+  );
+}
+
+function MechanicLoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '55vh', flexDirection: 'column', gap: '1rem' }}>
+      <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#3B82F6' }} />
+      <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Loading Mechanic Workspace...</span>
     </div>
   );
 }
@@ -157,6 +173,24 @@ function App() {
           <Route path="service-centers" element={<Suspense fallback={<AdminLoadingFallback />}><AdminServiceCenters /></Suspense>} />
           <Route path="invoices" element={<Suspense fallback={<AdminLoadingFallback />}><AdminInvoices /></Suspense>} />
           <Route path="reviews" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReviews /></Suspense>} />
+        </Route>
+
+        {/* =========================
+            MECHANIC ROUTES (LAZY LOADED CHUNKS)
+        ========================== */}
+        <Route
+          path="/mechanic"
+          element={
+            <ProtectedRoute allowedRoles={['MECHANIC']}>
+              <MechanicLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Suspense fallback={<MechanicLoadingFallback />}><MechanicDashboard /></Suspense>} />
+          <Route path="jobs" element={<Suspense fallback={<MechanicLoadingFallback />}><MechanicJobs /></Suspense>} />
+          <Route path="jobs/:id" element={<Suspense fallback={<MechanicLoadingFallback />}><MechanicJobDetails /></Suspense>} />
+          <Route path="profile" element={<Suspense fallback={<MechanicLoadingFallback />}><MechanicProfile /></Suspense>} />
         </Route>
       </Routes>
     </BrowserRouter>
