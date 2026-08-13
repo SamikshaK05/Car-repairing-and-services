@@ -14,9 +14,9 @@ const router = express.Router();
 router.get('/', getServices);
 router.get('/:id', getServiceById);
 
-// Admin-only protected routes
-router.post('/', protect, authorize('ADMIN'), createService);
-router.put('/:id', protect, authorize('ADMIN'), updateService);
-router.delete('/:id', protect, authorize('ADMIN'), deleteService);
+// Protected routes (Admin & Service Manager)
+router.post('/', protect, authorize('ADMIN', 'SERVICE_MANAGER'), createService);
+router.put('/:id', protect, authorize('ADMIN', 'SERVICE_MANAGER'), updateService);
+router.delete('/:id', protect, authorize('ADMIN', 'SERVICE_MANAGER'), deleteService);
 
 export default router;
