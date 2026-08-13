@@ -26,6 +26,7 @@ import Invoices from './pages/customer/Invoices';
 import Profile from './pages/customer/Profile';
 
 import AdminLayout from './layouts/AdminLayout';
+import ServiceManagerLayout from './layouts/ServiceManagerLayout';
 
 // Lazy-loaded Admin Page Modules for Route-Level Code Splitting
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
@@ -37,6 +38,14 @@ const AdminServiceCenters = lazy(() => import('./pages/admin/ServiceCenters'));
 const AdminInvoices = lazy(() => import('./pages/admin/Invoices'));
 const AdminReviews = lazy(() => import('./pages/admin/Reviews'));
 const AdminVehicles = lazy(() => import('./pages/admin/Vehicles'));
+
+// Lazy-loaded Service Manager Page Modules for Route-Level Code Splitting
+const ServiceManagerDashboard = lazy(() => import('./pages/serviceManager/Dashboard'));
+const ServiceManagerServices = lazy(() => import('./pages/serviceManager/Services'));
+const ServiceManagerBookings = lazy(() => import('./pages/serviceManager/Bookings'));
+const ServiceManagerMechanics = lazy(() => import('./pages/serviceManager/Mechanics'));
+const ServiceManagerServiceCenter = lazy(() => import('./pages/serviceManager/ServiceCenter'));
+const ServiceManagerProfile = lazy(() => import('./pages/serviceManager/Profile'));
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -59,6 +68,15 @@ function AdminLoadingFallback() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '55vh', flexDirection: 'column', gap: '1rem' }}>
       <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-accent)' }} />
       <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Loading Admin Module...</span>
+    </div>
+  );
+}
+
+function ServiceManagerLoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '55vh', flexDirection: 'column', gap: '1rem' }}>
+      <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#8B5CF6' }} />
+      <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Loading Service Manager Workspace...</span>
     </div>
   );
 }
@@ -157,6 +175,26 @@ function App() {
           <Route path="service-centers" element={<Suspense fallback={<AdminLoadingFallback />}><AdminServiceCenters /></Suspense>} />
           <Route path="invoices" element={<Suspense fallback={<AdminLoadingFallback />}><AdminInvoices /></Suspense>} />
           <Route path="reviews" element={<Suspense fallback={<AdminLoadingFallback />}><AdminReviews /></Suspense>} />
+        </Route>
+
+        {/* =========================
+            SERVICE MANAGER ROUTES (LAZY LOADED CHUNKS)
+        ========================== */}
+        <Route
+          path="/service-manager"
+          element={
+            <ProtectedRoute allowedRoles={['SERVICE_MANAGER']}>
+              <ServiceManagerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Suspense fallback={<ServiceManagerLoadingFallback />}><ServiceManagerDashboard /></Suspense>} />
+          <Route path="services" element={<Suspense fallback={<ServiceManagerLoadingFallback />}><ServiceManagerServices /></Suspense>} />
+          <Route path="bookings" element={<Suspense fallback={<ServiceManagerLoadingFallback />}><ServiceManagerBookings /></Suspense>} />
+          <Route path="mechanics" element={<Suspense fallback={<ServiceManagerLoadingFallback />}><ServiceManagerMechanics /></Suspense>} />
+          <Route path="service-centers" element={<Suspense fallback={<ServiceManagerLoadingFallback />}><ServiceManagerServiceCenter /></Suspense>} />
+          <Route path="profile" element={<Suspense fallback={<ServiceManagerLoadingFallback />}><ServiceManagerProfile /></Suspense>} />
         </Route>
       </Routes>
     </BrowserRouter>
