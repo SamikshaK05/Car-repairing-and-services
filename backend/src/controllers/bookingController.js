@@ -38,6 +38,11 @@ export const getBookings = async (req, res) => {
 
     if (req.user && req.user.role === 'CUSTOMER') {
       filter.user = req.user._id;
+    } else if (req.user && req.user.role === 'MECHANIC') {
+      const assignedCount = await Booking.countDocuments({ mechanic: req.user._id });
+      if (assignedCount > 0) {
+        filter.mechanic = req.user._id;
+      }
     } else if (user) {
       if (!mongoose.Types.ObjectId.isValid(user)) {
         return res.status(400).json({
@@ -105,6 +110,21 @@ export const getBookingById = async (req, res) => {
     // Ownership check for CUSTOMER role
     if (req.user && req.user.role === 'CUSTOMER') {
       if (booking.user._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this booking',
+        });
+      }
+    }
+
+    // Authorization check for MECHANIC role
+    if (req.user && req.user.role === 'MECHANIC') {
+      const mechId = booking.mechanic
+        ? booking.mechanic._id
+          ? booking.mechanic._id.toString()
+          : booking.mechanic.toString()
+        : null;
+      if (mechId && mechId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to access this booking',
