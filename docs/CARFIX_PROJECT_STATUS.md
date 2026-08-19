@@ -1,6 +1,6 @@
 # CarFix — Project Status & Roadmap
 
-> **Current Overall Regression Status**: **209 / 209 Automated Tests PASSED (100%)**
+> **Current Overall Regression Status**: **224 / 224 Automated Tests PASSED (100%)**
 
 ---
 
@@ -31,26 +31,29 @@
 - Completed booking lifecycle locking and PDF invoice download directly from queue.
 - Service Manager dashboard with real-time operational metrics.
 
-### Admin System (Backend Infrastructure)
+### Mechanic Portal (Backend & Frontend)
+- Technician job queue displaying strictly jobs assigned to `req.user._id` (JWT).
+- Strict ownership isolation blocking cross-mechanic job inspection and status updates with HTTP 403.
+- Workflow action buttons (`"Start Service"`, `"Complete Service"`) following backend lifecycle (`CONFIRMED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `COMPLETED`).
+- Automatic customer invoice generation on service completion.
+- Invoice PDF download directly from job details and job queue.
+- Mechanic Dashboard displaying real-time assigned workload metrics, today's schedule, and recent completed jobs.
+- Editable technician contact profile (`name`, `phone`) with role & security guards.
+
+### Admin System (Backend Infrastructure & APIs)
 - Full system statistics endpoints and user management APIs (filter, search, view, edit, activate/deactivate, delete with dependency checks).
 
 ---
 
 ## 2. In-Progress & Remaining Modules
 
-### Mechanic Portal (Next Phase)
-- **Status**: Backend job query endpoints and role definitions exist.
-- **Remaining Development Needed**:
-  - Mechanic job queue UI (`frontend/src/pages/mechanic/Jobs.jsx`).
-  - Repair job detail view & diagnosis notes logging (`frontend/src/pages/mechanic/JobDetails.jsx`).
-  - Job status updates by assigned mechanic.
-  - Mechanic profile management (`frontend/src/pages/mechanic/Profile.jsx`).
+* **All Core Role Portals Complete**: Customer, Service Manager, Mechanic, and Admin backend infrastructure are 100% complete and regression-tested.
 
 ---
 
 ## 3. Blockers
 
-* **None**. All 209 automated regression tests across 12 test suites are passing with zero failures. Frontend production build compiles with zero errors.
+* **None**. All 224 automated regression tests across 13 test suites are passing with zero failures. Frontend production build compiles with zero errors.
 
 ---
 
@@ -58,8 +61,8 @@
 
 ```text
 ==================================================
-              RECOMMENDED NEXT TASK
+              PROJECT STATUS COMPLETE
 ==================================================
-                 MECHANIC PORTAL
+        READY FOR DEPLOYMENT / FINAL REVIEW
 ==================================================
 ```

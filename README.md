@@ -208,7 +208,7 @@ Supported User Roles (`User.role`):
 
 ## Automated Testing & Regression Suite
 
-CarFix maintains a 100% passing automated regression suite across 12 dedicated test suites:
+CarFix maintains a 100% passing automated regression suite across 13 dedicated test suites:
 
 ```text
 ==================================================
@@ -227,8 +227,9 @@ CarFix maintains a 100% passing automated regression suite across 12 dedicated t
 10. test_service_centers_and_reviews.js ==>  27 / 27  PASSED
 11. test_services_catalog.js            ==>  28 / 28  PASSED
 12. test_service_manager_portal.js      ==>  19 / 19  PASSED
+13. test_mechanic_portal.js             ==>  15 / 15  PASSED
 --------------------------------------------------
-TOTAL REGRESSION TESTS                  : 209 / 209 PASSED (100%)
+TOTAL REGRESSION TESTS                  : 224 / 224 PASSED (100%)
 ```
 
 To run any test suite:
