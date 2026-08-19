@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 import ServiceCenter from '../models/ServiceCenter.js';
 
-// @desc    Get all service centers (supports city filter & includeInactive)
+// @desc    Get all service centers (supports search, city, service filter & includeInactive)
 // @route   GET /api/service-centers
 export const getServiceCenters = async (req, res) => {
   try {
-    const { city, includeInactive } = req.query;
+    const { city, search, name, service, includeInactive } = req.query;
 
     const filter = {};
 
@@ -16,7 +16,30 @@ export const getServiceCenters = async (req, res) => {
 
     // Case-insensitive city filter if provided
     if (city && city.trim() !== '') {
-      filter.city = { $regex: new RegExp(`^${city.trim()}$`, 'i') };
+      filter.city = { $regex: new RegExp(city.trim(), 'i') };
+    }
+
+    // Case-insensitive name filter if provided directly
+    if (name && name.trim() !== '') {
+      filter.name = { $regex: new RegExp(name.trim(), 'i') };
+    }
+
+    // Combined search term (matches name, address, city)
+    if (search && search.trim() !== '') {
+      const s = search.trim();
+      const searchRegex = new RegExp(s, 'i');
+      filter.$or = [
+        { name: searchRegex },
+        { city: searchRegex },
+        { address: searchRegex },
+      ];
+    }
+
+    // Filter by service ID if provided
+    if (service && service.trim() !== '') {
+      if (mongoose.Types.ObjectId.isValid(service.trim())) {
+        filter.services = service.trim();
+      }
     }
 
     const serviceCenters = await ServiceCenter.find(filter)

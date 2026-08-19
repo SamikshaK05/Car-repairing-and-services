@@ -53,6 +53,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customer', customerRoutes);
+app.use('/api/dashboard/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/service-manager', serviceManagerRoutes);
 app.use('/api/mechanic', mechanicRoutes);

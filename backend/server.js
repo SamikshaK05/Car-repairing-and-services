@@ -4,16 +4,16 @@ import dns from 'dns';
 // 1. Load environment variables first
 dotenv.config();
 
-// 2. Configure DNS servers with fallback
+// 2. Configure DNS servers with robust fallback (prioritizing 1.1.1.1 for MongoDB SRV resolution)
 const dnsServer = process.env.DNS_SERVER;
-if (dnsServer && dnsServer.trim()) {
-  try {
-    dns.setServers([dnsServer.trim(), '8.8.8.8', '1.1.1.1']);
-  } catch (err) {
-    try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) {}
-  }
-} else {
-  try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) {}
+const servers = ['1.1.1.1', '8.8.8.8'];
+if (dnsServer && dnsServer.trim() && !servers.includes(dnsServer.trim())) {
+  servers.push(dnsServer.trim());
+}
+try {
+  dns.setServers(servers);
+} catch (err) {
+  // Ignore fallback errors
 }
 
 import connectDB from './src/config/database.js';

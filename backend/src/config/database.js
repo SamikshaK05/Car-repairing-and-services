@@ -3,23 +3,14 @@ import dns from 'dns';
 
 export const configureDNS = () => {
   const dnsServer = process.env.DNS_SERVER;
-  if (dnsServer && dnsServer.trim()) {
-    try {
-      dns.setServers([dnsServer.trim(), '8.8.8.8', '1.1.1.1']);
-    } catch (error) {
-      console.warn(`Failed to set custom DNS server (${dnsServer}): ${error.message}`);
-      try {
-        dns.setServers(['8.8.8.8', '1.1.1.1']);
-      } catch (err) {
-        // Ignore fallback errors
-      }
-    }
-  } else {
-    try {
-      dns.setServers(['8.8.8.8', '1.1.1.1']);
-    } catch (err) {
-      // Ignore fallback errors
-    }
+  const servers = ['1.1.1.1', '8.8.8.8'];
+  if (dnsServer && dnsServer.trim() && !servers.includes(dnsServer.trim())) {
+    servers.push(dnsServer.trim());
+  }
+  try {
+    dns.setServers(servers);
+  } catch (error) {
+    console.warn(`Failed to set custom DNS servers (${servers.join(', ')}): ${error.message}`);
   }
 };
 

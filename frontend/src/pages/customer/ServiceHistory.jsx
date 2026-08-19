@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, Star, Loader2, AlertCircle, CheckCircle2, UserCheck, X } from 'lucide-react';
-import { getBookings } from '../../api/bookings.api';
+import { Search, Eye, Star, Loader2, AlertCircle, CheckCircle2, UserCheck, X, Download } from 'lucide-react';
+import { getBookings, getServiceHistory } from '../../api/bookings.api';
 import { getReviews, createReview } from '../../api/reviews.api';
+import { downloadInvoice } from '../../api/invoices.api';
 
 export default function ServiceHistory() {
   const [completedBookings, setCompletedBookings] = useState([]);
   const [reviewsMap, setReviewsMap] = useState({}); // bookingId -> reviewObj
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('All Vehicles');
@@ -26,14 +28,14 @@ export default function ServiceHistory() {
     try {
       setLoading(true);
       setError(null);
-      const [bookingsRes, reviewsRes] = await Promise.all([
-        getBookings(),
+      const [historyRes, reviewsRes] = await Promise.all([
+        getServiceHistory().catch(() => getBookings()),
         getReviews().catch(() => ({ data: [] })),
       ]);
 
-      const allBookings = bookingsRes.data || bookingsRes || [];
-      const completed = Array.isArray(allBookings)
-        ? allBookings.filter((b) => b.status === 'COMPLETED')
+      const rawBookings = historyRes.data || historyRes || [];
+      const completed = Array.isArray(rawBookings)
+        ? rawBookings.filter((b) => b.status === 'COMPLETED')
         : [];
 
       setCompletedBookings(completed);
@@ -53,6 +55,27 @@ export default function ServiceHistory() {
       setError(err.data?.message || err.message || 'Failed to load service history. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadInvoice = async (invId, invNum) => {
+    if (!invId) return;
+    setDownloadingInvoiceId(invId);
+    try {
+      const { blob, filename } = await downloadInvoice(invId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Invoice download error:', err);
+      alert(err.message || 'Failed to download invoice.');
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -219,6 +242,7 @@ export default function ServiceHistory() {
                 <th>Completed Date</th>
                 <th>Service Center</th>
                 <th>Amount</th>
+                <th>Invoice</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -229,6 +253,7 @@ export default function ServiceHistory() {
                   const bId = row._id || row.id;
                   const vName = row.vehicle ? `${row.vehicle.make || ''} ${row.vehicle.model || ''}`.trim() : 'Vehicle';
                   const regNum = row.vehicle?.registrationNumber || '';
+                  const vMileage = row.vehicle?.mileage ? `${row.vehicle.mileage} km` : null;
                   const sName = row.service?.name || 'Service';
                   const cName = row.serviceCenter?.name || 'CarFix Hub';
                   const formattedDate = new Date(row.bookingDate).toLocaleDateString('en-IN', {
@@ -237,6 +262,7 @@ export default function ServiceHistory() {
                     year: 'numeric',
                   });
                   const existingReview = reviewsMap[bId];
+                  const invoiceObj = row.invoice;
 
                   return (
                     <tr key={bId}>
@@ -244,7 +270,7 @@ export default function ServiceHistory() {
                         {vName}
                         {regNum && (
                           <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
-                            {regNum}
+                            {regNum} {vMileage ? `• ${vMileage}` : ''}
                           </span>
                         )}
                       </td>
@@ -252,6 +278,29 @@ export default function ServiceHistory() {
                       <td>{formattedDate}</td>
                       <td>{cName}</td>
                       <td style={{ fontWeight: '700' }}>₹{row.amount}</td>
+                      <td>
+                        {invoiceObj ? (
+                          <button
+                            type="button"
+                            className="btn-card-secondary"
+                            onClick={() => handleDownloadInvoice(invoiceObj._id, invoiceObj.invoiceNumber)}
+                            disabled={downloadingInvoiceId === invoiceObj._id}
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                          >
+                            {downloadingInvoiceId === invoiceObj._id ? (
+                              <>
+                                <Loader2 size={12} className="spinning-loader" style={{ animation: 'spin 1s linear infinite' }} /> PDF
+                              </>
+                            ) : (
+                              <>
+                                <Download size={12} /> {invoiceObj.invoiceNumber || 'Invoice'}
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>N/A</span>
+                        )}
+                      </td>
                       <td>
                         <span className="status-badge" style={{ display: 'inline-flex' }}>
                           <span className="status-dot"></span>
@@ -281,7 +330,7 @@ export default function ServiceHistory() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                     No completed service history records found.
                   </td>
                 </tr>

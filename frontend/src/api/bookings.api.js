@@ -14,6 +14,12 @@ export const getBookings = async (params = {}) => {
   return apiClient.get(`/bookings${queryString ? `?${queryString}` : ''}`);
 };
 
+// @desc    Get completed service history for authenticated customer
+// @endpoint GET /api/bookings/history
+export const getServiceHistory = async () => {
+  return apiClient.get('/bookings/history');
+};
+
 // @desc    Get single booking by ID
 // @endpoint GET /api/bookings/:id
 export const getBookingById = async (id) => {

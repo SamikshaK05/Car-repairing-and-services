@@ -178,21 +178,21 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // Validate Duplicate Review
-    const existingReview = await Review.findOne({ booking });
-    if (existingReview) {
-      return res.status(409).json({
-        success: false,
-        message: 'A review already exists for this booking',
-      });
-    }
-
     // Validate Rating (must be numeric between 1 and 5)
     const numRating = Number(rating);
     if (isNaN(numRating) || numRating < 1 || numRating > 5) {
       return res.status(400).json({
         success: false,
         message: 'Rating must be between 1 and 5',
+      });
+    }
+
+    // Validate Duplicate Review
+    const existingReview = await Review.findOne({ booking });
+    if (existingReview) {
+      return res.status(409).json({
+        success: false,
+        message: 'A review already exists for this booking',
       });
     }
 

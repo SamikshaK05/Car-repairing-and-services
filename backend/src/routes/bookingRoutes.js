@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getBookings,
+  getServiceHistory,
   getBookingById,
   createBooking,
   updateBooking,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/', getBookings);
+router.get('/history', getServiceHistory);
 router.get('/:id', getBookingById);
 router.post('/', createBooking);
 router.put('/:id', updateBooking);

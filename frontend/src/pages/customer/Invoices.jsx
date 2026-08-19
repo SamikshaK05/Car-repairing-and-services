@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Eye, Download, X, Search, Loader2, AlertCircle, Calendar } from 'lucide-react';
-import { getInvoices, getInvoiceById } from '../../api/invoices.api';
+import { getInvoices, getInvoiceById, downloadInvoice } from '../../api/invoices.api';
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
@@ -12,6 +12,7 @@ export default function Invoices() {
 
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [downloadNotice, setDownloadNotice] = useState('');
 
   const fetchCustomerInvoices = async () => {
@@ -50,9 +51,32 @@ export default function Invoices() {
     }
   };
 
-  const handleDownload = (invoiceNum) => {
-    setDownloadNotice(`Invoice ${invoiceNum} download feature will be connected later.`);
-    setTimeout(() => setDownloadNotice(''), 4000);
+  const handleDownload = async (invoiceObj) => {
+    if (!invoiceObj) return;
+    const invId = invoiceObj._id || invoiceObj.id;
+    const invNum = invoiceObj.invoiceNumber || invId;
+
+    setDownloadingId(invId);
+    setDownloadNotice('');
+
+    try {
+      const { blob, filename } = await downloadInvoice(invId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setDownloadNotice(`Invoice ${invNum} downloaded successfully.`);
+      setTimeout(() => setDownloadNotice(''), 4000);
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      setDownloadNotice(err.message || 'Failed to download invoice. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const filteredInvoices = invoices.filter((inv) => {
@@ -198,10 +222,19 @@ export default function Invoices() {
                           <button
                             type="button"
                             className="btn-card-secondary"
-                            onClick={() => handleDownload(invNum)}
+                            onClick={() => handleDownload(inv)}
+                            disabled={downloadingId === invId}
                             style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
                           >
-                            <Download size={14} style={{ marginRight: '0.2rem' }} /> Download
+                            {downloadingId === invId ? (
+                              <>
+                                <Loader2 size={14} className="spinning-loader" style={{ animation: 'spin 1s linear infinite', marginRight: '0.2rem' }} /> Downloading...
+                              </>
+                            ) : (
+                              <>
+                                <Download size={14} style={{ marginRight: '0.2rem' }} /> Download
+                              </>
+                            )}
                           </button>
                         </div>
                       </td>
@@ -301,9 +334,18 @@ export default function Invoices() {
               <button
                 type="button"
                 className="btn-card-primary"
-                onClick={() => handleDownload(selectedInvoice.invoiceNumber || selectedInvoice._id)}
+                onClick={() => handleDownload(selectedInvoice)}
+                disabled={downloadingId === (selectedInvoice._id || selectedInvoice.id)}
               >
-                Download Invoice
+                {downloadingId === (selectedInvoice._id || selectedInvoice.id) ? (
+                  <>
+                    <Loader2 size={16} className="spinning-loader" style={{ animation: 'spin 1s linear infinite', marginRight: '0.3rem' }} /> Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} style={{ marginRight: '0.3rem' }} /> Download Invoice
+                  </>
+                )}
               </button>
             </div>
           </div>

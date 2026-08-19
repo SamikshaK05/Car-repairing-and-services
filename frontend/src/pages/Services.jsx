@@ -54,6 +54,7 @@ export default function Services() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All Services');
   const [selectedService, setSelectedService] = useState(null);
 
@@ -85,11 +86,16 @@ export default function Services() {
     }
   });
 
-  // Filter services by selected category
-  const filteredServices =
-    activeCategory === 'All Services'
-      ? services
-      : services.filter((s) => s.category === activeCategory);
+  // Filter services by selected category and search term
+  const filteredServices = services.filter((s) => {
+    const matchesCategory = activeCategory === 'All Services' || s.category === activeCategory;
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      !term ||
+      (s.name || '').toLowerCase().includes(term) ||
+      (s.description || '').toLowerCase().includes(term);
+    return matchesCategory && matchesSearch;
+  });
 
   const handleViewService = (service) => {
     setSelectedService(service);
@@ -110,8 +116,34 @@ export default function Services() {
         </p>
       </section>
 
-      {/* SECTION 2 — SERVICE CATEGORY FILTER */}
-      <section className="filter-container">
+      {/* SECTION 2 — SERVICE CATEGORY FILTER & SEARCH */}
+      <section className="filter-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="input-with-icon" style={{ flex: '1', minWidth: '260px' }}>
+            <Search size={18} className="input-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search services by name or description (e.g. Oil, Brake, Diagnostic)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {(searchTerm || activeCategory !== 'All Services') && (
+            <button
+              type="button"
+              className="btn-card-secondary"
+              onClick={() => {
+                setSearchTerm('');
+                setActiveCategory('All Services');
+              }}
+              style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+
         <div className="filter-bar">
           {categoriesList.map((cat) => (
             <button
@@ -147,8 +179,8 @@ export default function Services() {
               id: service._id || service.id,
               name: service.name,
               category: service.category || 'General Service',
-              startingPrice: typeof service.price === 'number' ? `₹${service.price}` : service.startingPrice || '₹999',
-              duration: typeof service.duration === 'number' ? `${service.duration} mins` : service.duration || '1 hour',
+              startingPrice: typeof service.price === 'number' ? `₹${service.price}` : service.startingPrice || '₹0',
+              duration: typeof service.duration === 'number' ? `${service.duration} mins` : service.duration || 'N/A',
               description: service.description || 'Professional car service by certified mechanics.',
               icon: getServiceIcon(service.category, service.name),
             };
@@ -157,8 +189,8 @@ export default function Services() {
             );
           })
         ) : (
-          <div className="no-services-found" style={{ gridColumn: '1 / -1' }}>
-            No services found in this category.
+          <div className="no-services-found" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
+            No services found matching your search.
           </div>
         )}
       </section>

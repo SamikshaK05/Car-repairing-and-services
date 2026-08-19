@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 import Service from '../models/Service.js';
 import ServiceCenter from '../models/ServiceCenter.js';
+import Invoice from '../models/Invoice.js';
 
 // Helper function to populate all references
 const populateBooking = (query) => {
@@ -29,7 +30,7 @@ const isPastDate = (dateVal) => {
   return checkDate < today;
 };
 
-// @desc    Get all bookings (enforces CUSTOMER ownership)
+// @desc    Get all bookings (enforces CUSTOMER & SERVICE_MANAGER ownership)
 // @route   GET /api/bookings
 export const getBookings = async (req, res) => {
   try {
@@ -38,6 +39,9 @@ export const getBookings = async (req, res) => {
 
     if (req.user && req.user.role === 'CUSTOMER') {
       filter.user = req.user._id;
+    } else if (req.user && req.user.role === 'SERVICE_MANAGER' && req.user.serviceCenter) {
+      const mgrCenter = req.user.serviceCenter._id ? req.user.serviceCenter._id.toString() : req.user.serviceCenter.toString();
+      filter.serviceCenter = mgrCenter;
     } else if (req.user && req.user.role === 'MECHANIC') {
       const assignedCount = await Booking.countDocuments({ mechanic: req.user._id });
       if (assignedCount > 0) {
@@ -53,7 +57,7 @@ export const getBookings = async (req, res) => {
       filter.user = user;
     }
 
-    if (serviceCenter) {
+    if (serviceCenter && (!req.user || req.user.role !== 'SERVICE_MANAGER' || !req.user.serviceCenter)) {
       if (!mongoose.Types.ObjectId.isValid(serviceCenter)) {
         return res.status(400).json({
           success: false,
@@ -71,10 +75,32 @@ export const getBookings = async (req, res) => {
       Booking.find(filter).sort({ bookingDate: -1, bookingTime: -1 })
     );
 
+    const bookingIds = bookings.map((b) => b._id);
+    const invoices = await Invoice.find({ booking: { $in: bookingIds } }).lean();
+    const invoiceMap = new Map();
+    invoices.forEach((inv) => {
+      if (inv.booking) invoiceMap.set(inv.booking.toString(), inv);
+    });
+
+    const data = bookings.map((b) => {
+      const bObj = b.toObject ? b.toObject() : { ...b };
+      const inv = invoiceMap.get(b._id.toString());
+      if (inv) {
+        bObj.invoice = {
+          _id: inv._id,
+          invoiceNumber: inv.invoiceNumber,
+          paymentStatus: inv.paymentStatus,
+          paymentMethod: inv.paymentMethod,
+          total: inv.total,
+        };
+      }
+      return bObj;
+    });
+
     return res.status(200).json({
       success: true,
-      count: bookings.length,
-      data: bookings,
+      count: data.length,
+      data,
     });
   } catch (error) {
     console.error('Error in getBookings:', error.message);
@@ -85,7 +111,73 @@ export const getBookings = async (req, res) => {
   }
 };
 
-// @desc    Get booking by ID (enforces CUSTOMER ownership)
+// @desc    Get completed service history for authenticated customer
+// @route   GET /api/bookings/history
+// @access  Private
+export const getServiceHistory = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized, no token',
+      });
+    }
+
+    const filter = { status: 'COMPLETED' };
+
+    if (req.user && req.user.role === 'CUSTOMER') {
+      filter.user = req.user._id;
+    } else if (req.query.user) {
+      if (!mongoose.Types.ObjectId.isValid(req.query.user)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid user ID',
+        });
+      }
+      filter.user = req.query.user;
+    }
+
+    const bookings = await populateBooking(
+      Booking.find(filter).sort({ bookingDate: -1, createdAt: -1 })
+    );
+
+    const bookingIds = bookings.map((b) => b._id);
+    const invoices = await Invoice.find({ booking: { $in: bookingIds } }).lean();
+    const invoiceMap = new Map();
+    invoices.forEach((inv) => {
+      if (inv.booking) invoiceMap.set(inv.booking.toString(), inv);
+    });
+
+    const data = bookings.map((b) => {
+      const bObj = b.toObject ? b.toObject() : { ...b };
+      const inv = invoiceMap.get(b._id.toString());
+      if (inv) {
+        bObj.invoice = {
+          _id: inv._id,
+          invoiceNumber: inv.invoiceNumber,
+          paymentStatus: inv.paymentStatus,
+          paymentMethod: inv.paymentMethod,
+          total: inv.total,
+        };
+      }
+      return bObj;
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error('Error in getServiceHistory:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    });
+  }
+};
+
+// @desc    Get booking by ID (enforces CUSTOMER & SERVICE_MANAGER ownership)
 // @route   GET /api/bookings/:id
 export const getBookingById = async (req, res) => {
   try {
@@ -113,6 +205,18 @@ export const getBookingById = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to access this booking',
+        });
+      }
+    }
+
+    // Ownership check for SERVICE_MANAGER role
+    if (req.user && req.user.role === 'SERVICE_MANAGER' && req.user.serviceCenter) {
+      const mgrCenter = req.user.serviceCenter._id ? req.user.serviceCenter._id.toString() : req.user.serviceCenter.toString();
+      const bkCenter = booking.serviceCenter ? (booking.serviceCenter._id ? booking.serviceCenter._id.toString() : booking.serviceCenter.toString()) : null;
+      if (bkCenter !== mgrCenter) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access bookings for another service center',
         });
       }
     }
@@ -160,49 +264,73 @@ export const createBooking = async (req, res) => {
       ownerId = bodyUser || (req.user ? req.user._id : null);
     }
 
-    // Validate ObjectIds
     if (!ownerId || !mongoose.Types.ObjectId.isValid(ownerId)) {
-      return res.status(400).json({ success: false, message: 'Invalid user ID' });
-    }
-    if (!vehicle || !mongoose.Types.ObjectId.isValid(vehicle)) {
-      return res.status(400).json({ success: false, message: 'Invalid vehicle ID' });
-    }
-    if (!service || !mongoose.Types.ObjectId.isValid(service)) {
-      return res.status(400).json({ success: false, message: 'Invalid service ID' });
-    }
-    if (!serviceCenter || !mongoose.Types.ObjectId.isValid(serviceCenter)) {
-      return res.status(400).json({ success: false, message: 'Invalid service center ID' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID',
+      });
     }
 
-    // 1. Verify User exists
+    if (!vehicle || !mongoose.Types.ObjectId.isValid(vehicle)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid vehicle ID',
+      });
+    }
+
+    if (!service || !mongoose.Types.ObjectId.isValid(service)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service ID',
+      });
+    }
+
+    if (!serviceCenter || !mongoose.Types.ObjectId.isValid(serviceCenter)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service center ID',
+      });
+    }
+
+    // Status check: User must exist
     const userDoc = await User.findById(ownerId);
     if (!userDoc) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
     }
 
-    // 2. Verify Vehicle exists
+    // Vehicle Ownership & Verification check
     const vehicleDoc = await Vehicle.findById(vehicle);
     if (!vehicleDoc) {
-      return res.status(404).json({ success: false, message: 'Vehicle not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle not found',
+      });
     }
-
-    // 3. Verify Service exists
-    const serviceDoc = await Service.findById(service);
-    if (!serviceDoc) {
-      return res.status(404).json({ success: false, message: 'Service not found' });
-    }
-
-    // 4. Verify ServiceCenter exists
-    const serviceCenterDoc = await ServiceCenter.findById(serviceCenter);
-    if (!serviceCenterDoc) {
-      return res.status(404).json({ success: false, message: 'Service center not found' });
-    }
-
-    // Ownership check: Vehicle must belong to Booking User
     if (vehicleDoc.user.toString() !== ownerId.toString()) {
       return res.status(400).json({
         success: false,
         message: 'Vehicle does not belong to this user',
+      });
+    }
+
+    // Verification check: Service must exist
+    const serviceDoc = await Service.findById(service);
+    if (!serviceDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+      });
+    }
+
+    // Verification check: Service Center must exist
+    const serviceCenterDoc = await ServiceCenter.findById(serviceCenter);
+    if (!serviceCenterDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service center not found',
       });
     }
 
@@ -212,6 +340,21 @@ export const createBooking = async (req, res) => {
         success: false,
         message: 'Selected service is not available',
       });
+    }
+
+    // Service compatibility check: ServiceCenter must offer the requested Service
+    if (
+      serviceCenterDoc.services &&
+      Array.isArray(serviceCenterDoc.services) &&
+      serviceCenterDoc.services.length > 0
+    ) {
+      const serviceIds = serviceCenterDoc.services.map((s) => (s._id ? s._id.toString() : s.toString()));
+      if (!serviceIds.includes(service.toString())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected service center does not offer the requested service',
+        });
+      }
     }
 
     // Status check: ServiceCenter must be active
@@ -248,10 +391,18 @@ export const createBooking = async (req, res) => {
     }
 
     // Time validation
-    if (!bookingTime || bookingTime.trim() === '') {
+    if (!bookingTime || typeof bookingTime !== 'string' || bookingTime.trim() === '') {
       return res.status(400).json({
         success: false,
         message: 'Booking time is required',
+      });
+    }
+
+    const slotRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i;
+    if (!slotRegex.test(bookingTime.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time slot format. Please select a valid slot (e.g. 10:30 AM).',
       });
     }
 
@@ -310,7 +461,7 @@ export const createBooking = async (req, res) => {
   }
 };
 
-// @desc    Update booking (enforces CUSTOMER ownership)
+// @desc    Update booking
 // @route   PUT /api/bookings/:id
 export const updateBooking = async (req, res) => {
   try {
@@ -322,6 +473,8 @@ export const updateBooking = async (req, res) => {
         message: 'Invalid booking ID',
       });
     }
+
+    const { bookingDate, bookingTime, notes, status } = req.body;
 
     const booking = await Booking.findById(id);
     if (!booking) {
@@ -336,26 +489,27 @@ export const updateBooking = async (req, res) => {
       if (booking.user.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to modify this booking',
+          message: 'Not authorized to update this booking',
         });
       }
     }
 
-    const { bookingDate, bookingTime, notes, status } = req.body;
+    // Ownership check for SERVICE_MANAGER role
+    if (req.user && req.user.role === 'SERVICE_MANAGER' && req.user.serviceCenter) {
+      const mgrCenter = req.user.serviceCenter._id ? req.user.serviceCenter._id.toString() : req.user.serviceCenter.toString();
+      const bkCenter = booking.serviceCenter ? (booking.serviceCenter._id ? booking.serviceCenter._id.toString() : booking.serviceCenter.toString()) : null;
+      if (bkCenter !== mgrCenter) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update bookings for another service center',
+        });
+      }
+    }
 
-    const allowedStatuses = [
-      'PENDING',
-      'CONFIRMED',
-      'IN_PROGRESS',
-      'COMPLETED',
-      'CANCELLED',
-      'RESCHEDULED',
-    ];
-
-    if (status !== undefined && !allowedStatuses.includes(status)) {
+    if (booking.status === 'COMPLETED' || booking.status === 'CANCELLED') {
       return res.status(400).json({
         success: false,
-        message: 'Invalid booking status',
+        message: `Cannot update booking that is ${booking.status.toLowerCase()}`,
       });
     }
 
@@ -396,7 +550,6 @@ export const updateBooking = async (req, res) => {
     }
 
     if (notes !== undefined) updateData.notes = notes ? notes.trim() : null;
-    if (status !== undefined) updateData.status = status;
 
     const updatedBooking = await populateBooking(
       Booking.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
@@ -444,9 +597,17 @@ export const cancelBooking = async (req, res) => {
       });
     }
 
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized, no token',
+      });
+    }
+
     // Ownership check for CUSTOMER role
     if (req.user && req.user.role === 'CUSTOMER') {
-      if (booking.user.toString() !== req.user._id.toString()) {
+      const bookingUserId = booking.user?._id ? booking.user._id.toString() : booking.user?.toString();
+      if (bookingUserId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to cancel this booking',
@@ -508,12 +669,19 @@ export const assignMechanic = async (req, res) => {
       });
     }
 
-    // Verify mechanic User exists and has role MECHANIC
+    // Verify mechanic User exists and has role MECHANIC and is active
     const mechanicUser = await User.findById(mechanic);
     if (!mechanicUser || mechanicUser.role !== 'MECHANIC') {
       return res.status(400).json({
         success: false,
         message: 'User is not a valid mechanic',
+      });
+    }
+
+    if (mechanicUser.isActive === false) {
+      return res.status(400).json({
+        success: false,
+        message: 'Assigned mechanic account is inactive',
       });
     }
 
@@ -525,7 +693,25 @@ export const assignMechanic = async (req, res) => {
       });
     }
 
+    // Ownership check for SERVICE_MANAGER role
+    if (req.user && req.user.role === 'SERVICE_MANAGER' && req.user.serviceCenter) {
+      const mgrCenter = req.user.serviceCenter._id ? req.user.serviceCenter._id.toString() : req.user.serviceCenter.toString();
+      const bkCenter = booking.serviceCenter ? (booking.serviceCenter._id ? booking.serviceCenter._id.toString() : booking.serviceCenter.toString()) : null;
+      if (bkCenter !== mgrCenter) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to modify bookings for another service center',
+        });
+      }
+    }
+
     booking.mechanic = mechanic;
+
+    // Auto-advance PENDING booking to CONFIRMED on mechanic assignment
+    if (booking.status === 'PENDING') {
+      booking.status = 'CONFIRMED';
+    }
+
     await booking.save();
 
     const populatedBooking = await populateBooking(Booking.findById(booking._id));
@@ -584,7 +770,12 @@ export const updateBookingStatus = async (req, res) => {
 
     // Role permission check for MECHANIC
     if (req.user && req.user.role === 'MECHANIC') {
-      if (!booking.mechanic || booking.mechanic.toString() !== req.user._id.toString()) {
+      const bkMechId = booking.mechanic
+        ? booking.mechanic._id
+          ? booking.mechanic._id.toString()
+          : booking.mechanic.toString()
+        : null;
+      if (!bkMechId || bkMechId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update status for this booking',
@@ -592,8 +783,97 @@ export const updateBookingStatus = async (req, res) => {
       }
     }
 
+    // Ownership check for SERVICE_MANAGER role
+    if (req.user && req.user.role === 'SERVICE_MANAGER' && req.user.serviceCenter) {
+      const mgrCenter = req.user.serviceCenter._id ? req.user.serviceCenter._id.toString() : req.user.serviceCenter.toString();
+      const bkCenter = booking.serviceCenter ? (booking.serviceCenter._id ? booking.serviceCenter._id.toString() : booking.serviceCenter.toString()) : null;
+      if (bkCenter !== mgrCenter) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update bookings for another service center',
+        });
+      }
+    }
+
+    const currentStatus = booking.status;
+
+    // Enforce strict status lifecycle transition rules
+    if (currentStatus === 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cancelled booking status cannot be changed',
+      });
+    }
+
+    if (currentStatus === 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Completed booking status cannot be changed',
+      });
+    }
+
+    if (currentStatus !== status) {
+      const validTransitions = {
+        PENDING: ['CONFIRMED', 'CANCELLED'],
+        CONFIRMED: ['IN_PROGRESS', 'CANCELLED'],
+        IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
+        RESCHEDULED: ['CONFIRMED', 'IN_PROGRESS', 'CANCELLED'],
+      };
+
+      const allowedNext = validTransitions[currentStatus] || [];
+      if (!allowedNext.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from ${currentStatus} to ${status}`,
+        });
+      }
+    }
+
     booking.status = status;
     await booking.save();
+
+    // Auto Invoice Generation on status === 'COMPLETED'
+    if (status === 'COMPLETED') {
+      const existingInvoice = await Invoice.findOne({ booking: booking._id });
+      if (!existingInvoice) {
+        let srvPrice = booking.amount || 0;
+        let srvName = 'Car Repair Service';
+
+        const srvId = booking.service?._id ? booking.service._id : booking.service;
+        if (srvId) {
+          const srvDoc = await Service.findById(srvId);
+          if (srvDoc) {
+            srvPrice = srvDoc.price;
+            srvName = srvDoc.name;
+          }
+        }
+
+        const year = new Date().getFullYear();
+        let invoiceNumber = `CARFIX-${year}-${Math.floor(100000 + Math.random() * 900000)}`;
+        let conflict = await Invoice.findOne({ invoiceNumber });
+        while (conflict) {
+          invoiceNumber = `CARFIX-${year}-${Math.floor(100000 + Math.random() * 900000)}`;
+          conflict = await Invoice.findOne({ invoiceNumber });
+        }
+
+        const userId = booking.user?._id ? booking.user._id : booking.user;
+        const vehicleId = booking.vehicle?._id ? booking.vehicle._id : booking.vehicle;
+
+        await Invoice.create({
+          invoiceNumber,
+          booking: booking._id,
+          user: userId,
+          vehicle: vehicleId,
+          items: [{ serviceName: srvName, quantity: 1, price: srvPrice, amount: srvPrice }],
+          subtotal: srvPrice,
+          tax: 0,
+          total: srvPrice,
+          paymentStatus: 'PENDING',
+          paymentMethod: 'CASH',
+          issuedAt: new Date(),
+        });
+      }
+    }
 
     const populatedBooking = await populateBooking(Booking.findById(booking._id));
 

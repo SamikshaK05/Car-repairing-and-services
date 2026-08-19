@@ -3,27 +3,37 @@ import Booking from '../models/Booking.js';
 import Invoice from '../models/Invoice.js';
 import Review from '../models/Review.js';
 
-// @desc    Get customer dashboard data (vehicles, stats, upcoming/recent bookings, invoices, reviews)
-// @route   GET /api/customer/dashboard
+// @desc    Get customer dashboard data (metrics, recent bookings, recent invoices, activity feed)
+// @route   GET /api/customer/dashboard OR GET /api/dashboard/customer
 export const getCustomerDashboard = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized, no token',
+      });
+    }
+
+    // Identify customer strictly from req.user._id (ignore any req.query.user override)
     const userId = req.user._id;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Parallel database queries for performance
+    // Parallel database queries for metric calculations
     const [
       vehicles,
       totalVehicles,
       totalBookings,
+      activeBookingsCount,
       pendingBookingsCount,
       upcomingBookingsCount,
-      completedBookingsCount,
+      completedServicesCount,
       cancelledBookingsCount,
       upcomingBookings,
       recentBookings,
       totalInvoicesCount,
+      pendingInvoicesCount,
       recentInvoices,
       totalReviewsCount,
       recentReviews,
@@ -36,6 +46,11 @@ export const getCustomerDashboard = async (req, res) => {
       Vehicle.countDocuments({ user: userId }),
 
       Booking.countDocuments({ user: userId }),
+
+      Booking.countDocuments({
+        user: userId,
+        status: { $in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'RESCHEDULED'] },
+      }),
 
       Booking.countDocuments({ user: userId, status: 'PENDING' }),
 
@@ -63,7 +78,7 @@ export const getCustomerDashboard = async (req, res) => {
 
       Booking.find({ user: userId })
         .sort({ createdAt: -1 })
-        .limit(5)
+        .limit(10)
         .populate('service', 'name price category')
         .populate('serviceCenter', 'name city phone address')
         .populate('vehicle', 'make model registrationNumber')
@@ -71,9 +86,11 @@ export const getCustomerDashboard = async (req, res) => {
 
       Invoice.countDocuments({ user: userId }),
 
+      Invoice.countDocuments({ user: userId, paymentStatus: 'PENDING' }),
+
       Invoice.find({ user: userId })
         .sort({ issuedAt: -1 })
-        .limit(5)
+        .limit(10)
         .select('invoiceNumber subtotal tax total paymentStatus paymentMethod issuedAt booking vehicle')
         .populate('vehicle', 'make model registrationNumber')
         .lean(),
@@ -86,6 +103,63 @@ export const getCustomerDashboard = async (req, res) => {
         .populate('serviceCenter', 'name city')
         .lean(),
     ]);
+
+    // Construct unified Recent Activity feed from stored bookings and invoices
+    const activityFeed = [];
+
+    recentBookings.forEach((b) => {
+      const vStr = b.vehicle ? `${b.vehicle.make} ${b.vehicle.model}` : 'Vehicle';
+      const sStr = b.service?.name || 'Service';
+      const timestamp = b.updatedAt || b.createdAt || b.bookingDate;
+
+      if (b.status === 'CANCELLED') {
+        activityFeed.push({
+          id: `act-b-${b._id}`,
+          type: 'BOOKING_CANCELLED',
+          title: 'Booking Cancelled',
+          description: `Cancelled appointment for ${sStr} (${vStr})`,
+          timestamp,
+        });
+      } else if (b.status === 'COMPLETED') {
+        activityFeed.push({
+          id: `act-b-${b._id}`,
+          type: 'SERVICE_COMPLETED',
+          title: 'Service Completed',
+          description: `Completed ${sStr} for ${vStr}`,
+          timestamp,
+        });
+      } else if (b.status === 'CONFIRMED') {
+        activityFeed.push({
+          id: `act-b-${b._id}`,
+          type: 'BOOKING_CONFIRMED',
+          title: 'Booking Confirmed',
+          description: `Confirmed ${sStr} appointment for ${vStr}`,
+          timestamp,
+        });
+      } else {
+        activityFeed.push({
+          id: `act-b-${b._id}`,
+          type: 'BOOKING_CREATED',
+          title: 'New Service Scheduled',
+          description: `Scheduled ${sStr} appointment for ${vStr}`,
+          timestamp,
+        });
+      }
+    });
+
+    recentInvoices.forEach((inv) => {
+      activityFeed.push({
+        id: `act-i-${inv._id}`,
+        type: 'INVOICE_GENERATED',
+        title: `Invoice ${inv.paymentStatus === 'PAID' ? 'Paid' : 'Issued'}`,
+        description: `Invoice #${inv.invoiceNumber} for ₹${inv.total} (${inv.paymentStatus})`,
+        timestamp: inv.issuedAt || inv.createdAt,
+      });
+    });
+
+    // Sort recent activity newest first
+    activityFeed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const recentActivity = activityFeed.slice(0, 10);
 
     return res.status(200).json({
       success: true,
@@ -101,18 +175,26 @@ export const getCustomerDashboard = async (req, res) => {
         stats: {
           totalVehicles,
           totalBookings,
+          activeBookings: activeBookingsCount,
+          completedServices: completedServicesCount,
+          completedBookings: completedServicesCount,
+          pendingInvoices: pendingInvoicesCount,
+          totalInvoices: totalInvoicesCount,
           upcomingBookings: upcomingBookingsCount,
-          completedBookings: completedBookingsCount,
           pendingBookings: pendingBookingsCount,
           cancelledBookings: cancelledBookingsCount,
-          totalInvoices: totalInvoicesCount,
           totalReviews: totalReviewsCount,
         },
+        totalVehicles,
+        activeBookings: activeBookingsCount,
+        completedServices: completedServicesCount,
+        pendingInvoices: pendingInvoicesCount,
         vehicles,
         upcomingBookings,
         recentBookings,
         recentInvoices,
         recentReviews,
+        recentActivity,
       },
     });
   } catch (error) {

@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getInvoices,
   getInvoiceById,
+  downloadInvoice,
   createInvoice,
   updateInvoice,
   updatePaymentStatus,
@@ -13,6 +14,7 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/', getInvoices);
+router.get('/:id/download', downloadInvoice);
 router.get('/:id', getInvoiceById);
 router.post('/', authorize('ADMIN', 'SERVICE_MANAGER'), createInvoice);
 router.put('/:id', authorize('ADMIN', 'SERVICE_MANAGER'), updateInvoice);

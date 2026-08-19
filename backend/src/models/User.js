@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       enum: ['CUSTOMER', 'ADMIN', 'MECHANIC', 'SERVICE_MANAGER'],
       default: 'CUSTOMER',
     },
+    serviceCenter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ServiceCenter',
+      default: null,
+    },
     avatar: {
       type: String,
       default: null,
@@ -35,6 +40,14 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpire: {
+      type: Date,
+      default: null,
     },
   },
   {

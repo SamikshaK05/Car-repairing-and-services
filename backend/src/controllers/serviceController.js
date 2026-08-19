@@ -1,12 +1,27 @@
 import mongoose from 'mongoose';
 import Service from '../models/Service.js';
 
-// @desc    Get all services
+// @desc    Get all services (supports search, category & includeInactive)
 // @route   GET /api/services
 export const getServices = async (req, res) => {
   try {
-    const includeInactive = req.query.includeInactive === 'true';
-    const filter = includeInactive ? {} : { isActive: true };
+    const { search, category, includeInactive } = req.query;
+
+    const filter = {};
+
+    if (includeInactive !== 'true') {
+      filter.isActive = true;
+    }
+
+    if (category && category.trim() !== '' && category.trim() !== 'All Services') {
+      filter.category = { $regex: new RegExp(`^${category.trim()}$`, 'i') };
+    }
+
+    if (search && search.trim() !== '') {
+      const s = search.trim();
+      const searchRegex = new RegExp(s, 'i');
+      filter.$or = [{ name: searchRegex }, { description: searchRegex }];
+    }
 
     const services = await Service.find(filter).sort({ name: 1 });
 

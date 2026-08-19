@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import PDFDocument from 'pdfkit';
 import Invoice from '../models/Invoice.js';
 import Booking from '../models/Booking.js';
 
@@ -334,5 +335,133 @@ export const updatePaymentStatus = async (req, res) => {
       success: false,
       message: 'Server Error',
     });
+  }
+};
+
+// @desc    Download invoice PDF (enforces CUSTOMER ownership)
+// @route   GET /api/invoices/:id/download
+// @access  Private
+export const downloadInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid invoice ID',
+      });
+    }
+
+    const invoice = await populateInvoice(Invoice.findById(id));
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found',
+      });
+    }
+
+    // Ownership check for CUSTOMER role
+    if (req.user && req.user.role === 'CUSTOMER') {
+      const invoiceUserId = invoice.user?._id ? invoice.user._id.toString() : invoice.user?.toString();
+      if (invoiceUserId !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this invoice',
+        });
+      }
+    }
+
+    const filename = `invoice-${invoice.invoiceNumber || invoice._id}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    doc.pipe(res);
+
+    // Document Header & Branding
+    doc.fillColor('#1E293B').fontSize(20).text('CARFIX AUTOMOTIVE SERVICES', { align: 'left' });
+    doc.fontSize(10).fillColor('#64748B').text('Professional Vehicle Repair & Maintenance', { align: 'left' });
+    doc.moveDown(0.5);
+
+    doc.fillColor('#2563EB').fontSize(14).text('TAX INVOICE', { align: 'right' });
+    doc.fontSize(10).fillColor('#334155').text(`Invoice #: ${invoice.invoiceNumber}`, { align: 'right' });
+    const issueDateStr = invoice.issuedAt ? new Date(invoice.issuedAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
+    doc.text(`Date: ${issueDateStr}`, { align: 'right' });
+    doc.text(`Payment Status: ${invoice.paymentStatus || 'PENDING'}`, { align: 'right' });
+    doc.moveDown(1);
+
+    // Horizontal Rule
+    doc.moveTo(40, doc.y).lineTo(550, doc.y).strokeColor('#E2E8F0').stroke();
+    doc.moveDown(1);
+
+    // Customer & Vehicle Information
+    const infoY = doc.y;
+    doc.fontSize(11).fillColor('#1E293B').text('CUSTOMER DETAILS', 40, infoY);
+    doc.fontSize(9).fillColor('#475569');
+    doc.text(`Name: ${invoice.user?.name || 'N/A'}`, 40, infoY + 18);
+    doc.text(`Email: ${invoice.user?.email || 'N/A'}`, 40, infoY + 32);
+    doc.text(`Phone: ${invoice.user?.phone || 'N/A'}`, 40, infoY + 46);
+
+    doc.fontSize(11).fillColor('#1E293B').text('VEHICLE & SERVICE DETAILS', 300, infoY);
+    doc.fontSize(9).fillColor('#475569');
+    const vehStr = invoice.vehicle ? `${invoice.vehicle.make || ''} ${invoice.vehicle.model || ''} (${invoice.vehicle.registrationNumber || 'N/A'})` : 'N/A';
+    doc.text(`Vehicle: ${vehStr}`, 300, infoY + 18);
+    const bkStr = invoice.booking ? `${new Date(invoice.booking.bookingDate || Date.now()).toLocaleDateString('en-IN')} ${invoice.booking.bookingTime || ''}` : 'N/A';
+    doc.text(`Service Schedule: ${bkStr}`, 300, infoY + 32);
+    doc.text(`Payment Method: ${invoice.paymentMethod || 'CASH'}`, 300, infoY + 46);
+
+    doc.moveDown(4);
+
+    // Items Table Header
+    const tableTop = doc.y + 15;
+    doc.rect(40, tableTop, 510, 20).fill('#F1F5F9');
+    doc.fillColor('#1E293B').fontSize(10).text('Service / Description', 50, tableTop + 5);
+    doc.text('Qty', 320, tableTop + 5);
+    doc.text('Rate', 380, tableTop + 5);
+    doc.text('Amount', 470, tableTop + 5);
+
+    let position = tableTop + 25;
+    const items = invoice.items || [];
+    items.forEach((item) => {
+      doc.fillColor('#334155').fontSize(9);
+      doc.text(item.serviceName || 'Service', 50, position);
+      doc.text(String(item.quantity || 1), 320, position);
+      doc.text(`Rs. ${(item.price || 0).toFixed(2)}`, 380, position);
+      doc.text(`Rs. ${(item.amount || 0).toFixed(2)}`, 470, position);
+      position += 20;
+    });
+
+    // Summary Totals
+    position += 10;
+    doc.moveTo(40, position).lineTo(550, position).strokeColor('#E2E8F0').stroke();
+    position += 12;
+
+    doc.fontSize(10).fillColor('#475569').text('Subtotal:', 380, position);
+    doc.text(`Rs. ${(invoice.subtotal || 0).toFixed(2)}`, 470, position);
+    position += 16;
+
+    doc.text('Tax:', 380, position);
+    doc.text(`Rs. ${(invoice.tax || 0).toFixed(2)}`, 470, position);
+    position += 20;
+
+    doc.fontSize(11).fillColor('#1E293B').text('Total Amount:', 360, position);
+    doc.fontSize(11).fillColor('#2563EB').text(`Rs. ${(invoice.total || 0).toFixed(2)}`, 470, position);
+
+    // Footer
+    doc.moveDown(5);
+    doc.fontSize(9).fillColor('#94A3B8').text('Thank you for choosing CarFix Automotive Services!', { align: 'center' });
+    doc.text('For queries regarding this invoice, please contact support@carfix.com', { align: 'center' });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error in downloadInvoice:', error.message);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server Error generating invoice PDF',
+      });
+    }
   }
 };

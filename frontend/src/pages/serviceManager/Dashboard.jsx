@@ -104,34 +104,23 @@ export default function ServiceManagerDashboard() {
         <div className="dashboard-stats-grid">
           <div className="stat-card" style={{ backgroundColor: 'var(--white)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Services Catalog</span>
-              <Wrench size={22} color="#8B5CF6" />
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Pending Bookings</span>
+              <Clock size={22} color="#F59E0B" />
             </div>
-            <strong style={{ fontSize: '1.6rem', color: 'var(--primary-dark)' }}>{stats.totalServices || 0}</strong>
-            <span style={{ fontSize: '0.78rem', color: '#10B981', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
-              Available Services
+            <strong style={{ fontSize: '1.6rem', color: '#D97706' }}>{stats.pendingBookings || 0}</strong>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem' }}>
+              Awaiting Confirmation / Dispatch
             </span>
           </div>
 
           <div className="stat-card" style={{ backgroundColor: 'var(--white)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Service Centers</span>
-              <Building size={22} color="#F59E0B" />
-            </div>
-            <strong style={{ fontSize: '1.6rem', color: 'var(--primary-dark)' }}>{stats.totalServiceCenters || 0}</strong>
-            <span style={{ fontSize: '0.78rem', color: '#10B981', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
-              {stats.activeServiceCenters || 0} Operational
-            </span>
-          </div>
-
-          <div className="stat-card" style={{ backgroundColor: 'var(--white)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total Bookings</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Service Queue</span>
               <Calendar size={22} color="#3B82F6" />
             </div>
-            <strong style={{ fontSize: '1.6rem', color: 'var(--primary-dark)' }}>{stats.totalBookings || 0}</strong>
-            <span style={{ fontSize: '0.78rem', color: '#3B82F6', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
-              {stats.upcomingBookings || 0} Upcoming / Active
+            <strong style={{ fontSize: '1.6rem', color: '#2563EB' }}>{(stats.confirmedBookings || 0) + (stats.inProgressBookings || 0)}</strong>
+            <span style={{ fontSize: '0.78rem', color: '#8B5CF6', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
+              {stats.confirmedBookings || 0} Confirmed • {stats.inProgressBookings || 0} In Progress
             </span>
           </div>
 
@@ -141,8 +130,19 @@ export default function ServiceManagerDashboard() {
               <CheckCircle2 size={22} color="#10B981" />
             </div>
             <strong style={{ fontSize: '1.6rem', color: '#10B981' }}>{stats.completedBookings || 0}</strong>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem' }}>
-              {stats.inProgressBookings || 0} Currently in Progress
+            <span style={{ fontSize: '0.78rem', color: '#10B981', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
+              Service Invoices Generated
+            </span>
+          </div>
+
+          <div className="stat-card" style={{ backgroundColor: 'var(--white)', padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Invoices & Payments</span>
+              <FileText size={22} color="#8B5CF6" />
+            </div>
+            <strong style={{ fontSize: '1.6rem', color: 'var(--primary-dark)' }}>{stats.totalInvoices || 0}</strong>
+            <span style={{ fontSize: '0.78rem', color: '#10B981', display: 'block', marginTop: '0.25rem', fontWeight: 600 }}>
+              {stats.paidInvoices || 0} Paid • {stats.pendingPayments || 0} Pending
             </span>
           </div>
         </div>

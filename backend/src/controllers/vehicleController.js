@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Vehicle from '../models/Vehicle.js';
 import User from '../models/User.js';
+import Booking from '../models/Booking.js';
 
 // @desc    Get all vehicles (supports filtering by ?user=<USER_ID>, enforces CUSTOMER ownership)
 // @route   GET /api/vehicles
@@ -63,7 +64,8 @@ export const getVehicleById = async (req, res) => {
 
     // Ownership check for CUSTOMER role
     if (req.user && req.user.role === 'CUSTOMER') {
-      if (vehicle.user._id.toString() !== req.user._id.toString()) {
+      const vehicleUserId = vehicle.user?._id ? vehicle.user._id.toString() : vehicle.user?.toString();
+      if (vehicleUserId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to access this vehicle',
@@ -128,24 +130,30 @@ export const createVehicle = async (req, res) => {
         message: 'Model is required',
       });
     }
-    if (year === undefined || year === null) {
+    const yearNum = Number(year);
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 1) {
       return res.status(400).json({
         success: false,
-        message: 'Year is required',
+        message: 'Invalid vehicle year',
       });
     }
-    if (!registrationNumber || registrationNumber.trim() === '') {
+
+    if (!registrationNumber || typeof registrationNumber !== 'string' || registrationNumber.trim() === '') {
       return res.status(400).json({
         success: false,
         message: 'Registration number is required',
       });
     }
-    if (!fuelType) {
+
+    const allowedFuelTypes = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid', 'EV'];
+    if (!fuelType || !allowedFuelTypes.includes(fuelType)) {
       return res.status(400).json({
         success: false,
-        message: 'Fuel type is required',
+        message: 'Invalid fuel type',
       });
     }
+
+    const normalizedFuelType = fuelType === 'EV' ? 'Electric' : fuelType;
 
     // Duplicate registration number pre-check
     const formattedRegNum = registrationNumber.trim().toUpperCase();
@@ -161,9 +169,9 @@ export const createVehicle = async (req, res) => {
       user: ownerId,
       make: make.trim(),
       model: model.trim(),
-      year: Number(year),
+      year: yearNum,
       registrationNumber: formattedRegNum,
-      fuelType,
+      fuelType: normalizedFuelType,
       color: color ? color.trim() : null,
       mileage: mileage !== undefined ? Number(mileage) : 0,
     });
@@ -222,7 +230,8 @@ export const updateVehicle = async (req, res) => {
 
     // Ownership check for CUSTOMER role
     if (req.user && req.user.role === 'CUSTOMER') {
-      if (vehicle.user.toString() !== req.user._id.toString()) {
+      const vehicleUserId = vehicle.user?._id ? vehicle.user._id.toString() : vehicle.user?.toString();
+      if (vehicleUserId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to modify this vehicle',
@@ -235,8 +244,23 @@ export const updateVehicle = async (req, res) => {
     const updateData = {};
     if (make !== undefined) updateData.make = make.trim();
     if (model !== undefined) updateData.model = model.trim();
-    if (year !== undefined) updateData.year = Number(year);
+    if (year !== undefined) {
+      const yearNum = Number(year);
+      if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid vehicle year',
+        });
+      }
+      updateData.year = yearNum;
+    }
     if (registrationNumber !== undefined) {
+      if (typeof registrationNumber !== 'string' || registrationNumber.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'Registration number cannot be empty',
+        });
+      }
       const formattedRegNum = registrationNumber.trim().toUpperCase();
       const existingVehicle = await Vehicle.findOne({
         registrationNumber: formattedRegNum,
@@ -250,7 +274,16 @@ export const updateVehicle = async (req, res) => {
       }
       updateData.registrationNumber = formattedRegNum;
     }
-    if (fuelType !== undefined) updateData.fuelType = fuelType;
+    if (fuelType !== undefined) {
+      const allowedFuelTypes = ['Petrol', 'Diesel', 'CNG', 'Electric', 'Hybrid', 'EV'];
+      if (!allowedFuelTypes.includes(fuelType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid fuel type',
+        });
+      }
+      updateData.fuelType = fuelType === 'EV' ? 'Electric' : fuelType;
+    }
     if (color !== undefined) updateData.color = color ? color.trim() : null;
     if (mileage !== undefined) updateData.mileage = Number(mileage);
 
@@ -308,12 +341,25 @@ export const deleteVehicle = async (req, res) => {
 
     // Ownership check for CUSTOMER role
     if (req.user && req.user.role === 'CUSTOMER') {
-      if (vehicle.user.toString() !== req.user._id.toString()) {
+      const vehicleUserId = vehicle.user?._id ? vehicle.user._id.toString() : vehicle.user?.toString();
+      if (vehicleUserId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to delete this vehicle',
         });
       }
+    }
+
+    // Active booking check before deletion
+    const activeBooking = await Booking.findOne({
+      vehicle: id,
+      status: { $in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
+    });
+    if (activeBooking) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete vehicle associated with active bookings',
+      });
     }
 
     await Vehicle.findByIdAndDelete(id);

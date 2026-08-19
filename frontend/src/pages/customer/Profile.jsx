@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Edit3, KeyRound, CheckCircle2, X, Loader2, ShieldCheck } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Edit3, KeyRound, CheckCircle2, X, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { updateProfile, changePassword } from '../../api/auth.api';
 
 export default function Profile() {
-  const { user, loading } = useAuth();
+  const { user, loading, updateUser } = useAuth();
   const [successMsg, setSuccessMsg] = useState('');
+  const [modalError, setModalError] = useState('');
+  const [passModalError, setPassModalError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPassSubmitting, setIsPassSubmitting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
 
@@ -22,19 +27,100 @@ export default function Profile() {
     }
   }, [user]);
 
-  const handleEditSubmit = (e) => {
-    e.preventDefault();
-    setShowEditModal(false);
-    setSuccessMsg('Profile edit UI submitted (Backend profile update endpoint is not present).');
-    setTimeout(() => setSuccessMsg(''), 4000);
+  const handleOpenEditModal = () => {
+    if (user) {
+      setEditData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        location: 'Pune, Maharashtra',
+      });
+    }
+    setModalError('');
+    setShowEditModal(true);
   };
 
-  const handlePassSubmit = (e) => {
-    e.preventDefault();
-    setShowPassModal(false);
+  const handleOpenPassModal = () => {
     setPassData({ currentPass: '', newPass: '', confirmPass: '' });
-    setSuccessMsg('Password change UI submitted (Backend password endpoint is not present).');
-    setTimeout(() => setSuccessMsg(''), 4000);
+    setPassModalError('');
+    setShowPassModal(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setModalError('');
+
+    if (!editData.name.trim() || !editData.email.trim()) {
+      setModalError('Name and Email are required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await updateProfile({
+        name: editData.name,
+        email: editData.email,
+        phone: editData.phone,
+      });
+
+      if (response && response.success && response.data?.user) {
+        updateUser(response.data.user);
+        setShowEditModal(false);
+        setSuccessMsg('Profile information updated successfully.');
+        setTimeout(() => setSuccessMsg(''), 4000);
+      } else {
+        throw new Error(response?.message || 'Failed to update profile.');
+      }
+    } catch (err) {
+      setModalError(err.data?.message || err.message || 'Error updating profile. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePassSubmit = async (e) => {
+    e.preventDefault();
+    setPassModalError('');
+
+    if (!passData.currentPass) {
+      setPassModalError('Current password is required.');
+      return;
+    }
+    if (!passData.newPass) {
+      setPassModalError('New password is required.');
+      return;
+    }
+    if (passData.newPass.length < 8) {
+      setPassModalError('New password must be at least 8 characters.');
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passData.newPass)) {
+      setPassModalError('New password must contain uppercase, lowercase & a number.');
+      return;
+    }
+    if (passData.newPass !== passData.confirmPass) {
+      setPassModalError('New passwords do not match.');
+      return;
+    }
+
+    setIsPassSubmitting(true);
+
+    try {
+      const response = await changePassword(passData.currentPass, passData.newPass);
+      if (response && response.success) {
+        setShowPassModal(false);
+        setPassData({ currentPass: '', newPass: '', confirmPass: '' });
+        setSuccessMsg(response.message || 'Password changed successfully.');
+        setTimeout(() => setSuccessMsg(''), 4000);
+      } else {
+        throw new Error(response?.message || 'Failed to update password.');
+      }
+    } catch (err) {
+      setPassModalError(err.data?.message || err.message || 'Failed to change password. Please check your credentials.');
+    } finally {
+      setIsPassSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -103,7 +189,7 @@ export default function Profile() {
             <button
               type="button"
               className="btn-card-secondary"
-              onClick={() => setShowEditModal(true)}
+              onClick={handleOpenEditModal}
               style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
             >
               <Edit3 size={15} style={{ marginRight: '0.3rem' }} /> Edit Profile
@@ -188,7 +274,7 @@ export default function Profile() {
             <button
               type="button"
               className="btn-card-secondary"
-              onClick={() => setShowPassModal(true)}
+              onClick={handleOpenPassModal}
               style={{ width: '100%', justifyContent: 'center' }}
             >
               <KeyRound size={16} style={{ marginRight: '0.4rem' }} />
@@ -204,30 +290,41 @@ export default function Profile() {
           <div className="modal-card">
             <div className="modal-header">
               <h3 className="modal-title">Edit Profile</h3>
-              <button type="button" className="modal-close-btn" onClick={() => setShowEditModal(false)}>
+              <button type="button" className="modal-close-btn" onClick={() => setShowEditModal(false)} disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
 
+            {modalError && (
+              <div className="pricing-alert-box" style={{ marginBottom: '1rem', padding: '0.8rem', borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+                <AlertCircle size={18} className="alert-icon" style={{ color: '#ef4444' }} />
+                <div className="alert-text">
+                  <p style={{ color: '#ef4444', fontSize: '0.88rem', fontWeight: 500 }}>{modalError}</p>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Full Name</label>
+                <label className="form-label">Full Name *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={editData.name}
                   onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                  disabled={isSubmitting}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Email Address</label>
+                <label className="form-label">Email Address *</label>
                 <input
                   type="email"
                   className="form-input"
                   value={editData.email}
                   onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                  disabled={isSubmitting}
                   required
                 />
               </div>
@@ -239,6 +336,7 @@ export default function Profile() {
                   className="form-input"
                   value={editData.phone}
                   onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -249,15 +347,16 @@ export default function Profile() {
                   className="form-input"
                   value={editData.location}
                   onChange={(e) => setEditData({ ...editData, location: e.target.value })}
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button type="button" className="btn-card-secondary" onClick={() => setShowEditModal(false)}>
+                <button type="button" className="btn-card-secondary" onClick={() => setShowEditModal(false)} disabled={isSubmitting}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-card-primary">
-                  Save Changes
+                <button type="submit" className="btn-card-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -271,54 +370,66 @@ export default function Profile() {
           <div className="modal-card">
             <div className="modal-header">
               <h3 className="modal-title">Change Password</h3>
-              <button type="button" className="modal-close-btn" onClick={() => setShowPassModal(false)}>
+              <button type="button" className="modal-close-btn" onClick={() => setShowPassModal(false)} disabled={isPassSubmitting}>
                 <X size={20} />
               </button>
             </div>
 
+            {passModalError && (
+              <div className="pricing-alert-box" style={{ marginBottom: '1rem', padding: '0.8rem', borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+                <AlertCircle size={18} className="alert-icon" style={{ color: '#ef4444' }} />
+                <div className="alert-text">
+                  <p style={{ color: '#ef4444', fontSize: '0.88rem', fontWeight: 500 }}>{passModalError}</p>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handlePassSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Current Password</label>
+                <label className="form-label">Current Password *</label>
                 <input
                   type="password"
                   className="form-input"
                   placeholder="Enter current password"
                   value={passData.currentPass}
                   onChange={(e) => setPassData({ ...passData, currentPass: e.target.value })}
+                  disabled={isPassSubmitting}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">New Password</label>
+                <label className="form-label">New Password *</label>
                 <input
                   type="password"
                   className="form-input"
                   placeholder="Enter new password"
                   value={passData.newPass}
                   onChange={(e) => setPassData({ ...passData, newPass: e.target.value })}
+                  disabled={isPassSubmitting}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
+                <label className="form-label">Confirm New Password *</label>
                 <input
                   type="password"
                   className="form-input"
                   placeholder="Confirm new password"
                   value={passData.confirmPass}
                   onChange={(e) => setPassData({ ...passData, confirmPass: e.target.value })}
+                  disabled={isPassSubmitting}
                   required
                 />
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button type="button" className="btn-card-secondary" onClick={() => setShowPassModal(false)}>
+                <button type="button" className="btn-card-secondary" onClick={() => setShowPassModal(false)} disabled={isPassSubmitting}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-card-primary">
-                  Update Password
+                <button type="submit" className="btn-card-primary" disabled={isPassSubmitting}>
+                  {isPassSubmitting ? 'Updating...' : 'Update Password'}
                 </button>
               </div>
             </form>

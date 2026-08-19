@@ -95,14 +95,14 @@ export default function Dashboard() {
       </div>
 
       {/* STATS CARDS GRID */}
-      <div className="dashboard-stats-grid">
+      <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
         <div className="info-card" style={{ flexDirection: 'row', alignItems: 'center' }}>
           <div className="info-icon-wrapper">
             <Car size={24} />
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>My Cars</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.totalVehicles ?? 0}</h3>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.totalVehicles ?? dashData?.totalVehicles ?? 0}</h3>
           </div>
         </div>
 
@@ -111,8 +111,8 @@ export default function Dashboard() {
             <Calendar size={24} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Upcoming Services</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.upcomingBookings ?? 0}</h3>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Active Bookings</span>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.activeBookings ?? dashData?.activeBookings ?? 0}</h3>
           </div>
         </div>
 
@@ -122,7 +122,7 @@ export default function Dashboard() {
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Completed Services</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.completedBookings ?? 0}</h3>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.completedServices ?? stats.completedBookings ?? dashData?.completedServices ?? 0}</h3>
           </div>
         </div>
 
@@ -131,8 +131,10 @@ export default function Dashboard() {
             <FileText size={24} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Total Invoices</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.totalInvoices ?? 0}</h3>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Pending Invoices</span>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: stats.pendingInvoices > 0 ? '#ef4444' : 'var(--primary-dark)' }}>
+              {stats.pendingInvoices ?? dashData?.pendingInvoices ?? 0}
+            </h3>
           </div>
         </div>
       </div>

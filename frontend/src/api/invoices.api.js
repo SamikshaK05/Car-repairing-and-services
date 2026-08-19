@@ -30,3 +30,38 @@ export const updateInvoice = async (id, invoiceData) => {
 export const updatePaymentStatus = async (id, paymentStatus) => {
   return apiClient.patch(`/invoices/${id}/payment-status`, { paymentStatus });
 };
+
+// @desc    Download invoice PDF blob
+// @endpoint GET /api/invoices/:id/download
+export const downloadInvoice = async (id) => {
+  const token = localStorage.getItem('token');
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const response = await fetch(`${baseUrl}/invoices/${id}/download`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorJson;
+    try {
+      errorJson = JSON.parse(errorText);
+    } catch (e) {
+      errorJson = { message: 'Failed to download invoice' };
+    }
+    throw errorJson;
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get('content-disposition') || response.headers.get('Content-Disposition');
+  let filename = `invoice-${id}.pdf`;
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) {
+      filename = match[1];
+    }
+  }
+
+  return { blob, filename };
+};

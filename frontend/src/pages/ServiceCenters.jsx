@@ -78,10 +78,10 @@ export default function ServiceCenters() {
   const normalizedCenters = centers.map((c) => ({
     id: c._id || c.id,
     name: c.name,
-    city: c.city || 'Pune',
-    location: c.address || c.location || `${c.city || 'Pune'} Center`,
-    rating: typeof c.rating === 'number' && c.rating > 0 ? c.rating : 4.8,
-    reviews: typeof c.totalReviews === 'number' ? c.totalReviews : 124,
+    city: c.city || '',
+    location: c.address || c.location || `${c.city || ''} Center`,
+    rating: typeof c.rating === 'number' ? c.rating : 0,
+    reviews: typeof c.totalReviews === 'number' ? c.totalReviews : 0,
     hours: c.openingHours || '9:00 AM – 8:00 PM',
     status: c.isActive !== false ? 'Open Now' : 'Closed',
     services: Array.isArray(c.services)

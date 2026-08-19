@@ -4,6 +4,7 @@ import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.get('/', protect, authorize('CUSTOMER'), getCustomerDashboard);
 router.get('/dashboard', protect, authorize('CUSTOMER'), getCustomerDashboard);
 
 export default router;

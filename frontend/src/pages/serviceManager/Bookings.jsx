@@ -3,9 +3,6 @@ import {
   Calendar,
   Search,
   Filter,
-  User,
-  Car,
-  Wrench,
   UserCheck,
   CheckCircle2,
   AlertCircle,
@@ -14,9 +11,12 @@ import {
   RefreshCw,
   X,
   Clock,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { getBookings, updateBookingStatus, assignMechanic } from '../../api/bookings.api';
 import { getAdminUsers } from '../../api/users.api';
+import { downloadInvoice } from '../../api/invoices.api';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export default function ServiceManagerBookings() {
@@ -37,6 +37,7 @@ export default function ServiceManagerBookings() {
   const [selectedMechanicId, setSelectedMechanicId] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const [modalError, setModalError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
@@ -51,14 +52,16 @@ export default function ServiceManagerBookings() {
 
       if (bookingsRes && bookingsRes.success && Array.isArray(bookingsRes.data)) {
         setBookings(bookingsRes.data);
+      } else if (Array.isArray(bookingsRes)) {
+        setBookings(bookingsRes);
       } else {
         throw new Error(bookingsRes?.message || 'Failed to fetch bookings list');
       }
 
       if (mechanicsRes && mechanicsRes.success && Array.isArray(mechanicsRes.users)) {
-        setMechanics(mechanicsRes.users);
+        setMechanics(mechanicsRes.users.filter((m) => m.isActive !== false));
       } else if (mechanicsRes && Array.isArray(mechanicsRes.data)) {
-        setMechanics(mechanicsRes.data);
+        setMechanics(mechanicsRes.data.filter((m) => m.isActive !== false));
       }
     } catch (err) {
       console.error('Error loading service manager bookings:', err.message);
@@ -72,9 +75,26 @@ export default function ServiceManagerBookings() {
     fetchData();
   }, []);
 
+  // Calculate allowed status transitions for lifecycle enforcement
+  const getAllowedNextStatuses = (currentStatus) => {
+    switch (currentStatus) {
+      case 'PENDING':
+        return ['CONFIRMED', 'CANCELLED'];
+      case 'CONFIRMED':
+        return ['IN_PROGRESS', 'CANCELLED'];
+      case 'IN_PROGRESS':
+        return ['COMPLETED', 'CANCELLED'];
+      case 'RESCHEDULED':
+        return ['CONFIRMED', 'IN_PROGRESS', 'CANCELLED'];
+      default:
+        return []; // COMPLETED & CANCELLED have no allowed status transitions
+    }
+  };
+
   const handleOpenStatusModal = (booking) => {
     setUpdatingStatusBooking(booking);
-    setSelectedStatus(booking.status);
+    const allowed = getAllowedNextStatuses(booking.status);
+    setSelectedStatus(allowed.length > 0 ? allowed[0] : booking.status);
     setModalError(null);
   };
 
@@ -113,7 +133,7 @@ export default function ServiceManagerBookings() {
   const handleAssignSubmit = async (e) => {
     e.preventDefault();
     if (!assigningBooking || !selectedMechanicId) {
-      setModalError('Please select a valid mechanic.');
+      setModalError('Please select an active technician.');
       return;
     }
 
@@ -124,18 +144,41 @@ export default function ServiceManagerBookings() {
       const response = await assignMechanic(bId, selectedMechanicId);
 
       if (response && response.success) {
-        setSuccessMsg('Mechanic assigned to booking successfully.');
+        setSuccessMsg('Technician assigned to booking successfully.');
         setTimeout(() => setSuccessMsg(null), 4000);
         setAssigningBooking(null);
         fetchData();
       } else {
-        throw new Error(response?.message || 'Failed to assign mechanic');
+        throw new Error(response?.message || 'Failed to assign technician');
       }
     } catch (err) {
       console.error('Error assigning mechanic:', err.message);
-      setModalError(err.data?.message || err.message || 'Failed to assign mechanic.');
+      setModalError(err.data?.message || err.message || 'Failed to assign technician.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadPdf = async (invoiceId) => {
+    if (!invoiceId || downloadingInvoiceId) return;
+
+    try {
+      setDownloadingInvoiceId(invoiceId);
+      const { blob, filename } = await downloadInvoice(invoiceId);
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename || `invoice-${invoiceId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading invoice PDF:', err.message);
+      alert(err.message || 'Failed to download invoice PDF. Please try again.');
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -176,6 +219,8 @@ export default function ServiceManagerBookings() {
         return { bg: 'rgba(139, 92, 246, 0.15)', color: '#8B5CF6', label: 'In Progress' };
       case 'CONFIRMED':
         return { bg: 'rgba(59, 130, 246, 0.15)', color: '#2563EB', label: 'Confirmed' };
+      case 'RESCHEDULED':
+        return { bg: 'rgba(6, 182, 212, 0.15)', color: '#0891B2', label: 'Rescheduled' };
       case 'CANCELLED':
         return { bg: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', label: 'Cancelled' };
       default:
@@ -192,7 +237,7 @@ export default function ServiceManagerBookings() {
             Bookings Queue & Dispatch
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.98rem' }}>
-            Inspect customer service bookings, assign technicians, and track status progression.
+            Inspect customer service bookings, assign technicians, track status progression, and access auto-generated invoices.
           </p>
         </div>
         <button type="button" className="btn-card-secondary" onClick={fetchData} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -236,6 +281,7 @@ export default function ServiceManagerBookings() {
               <option value="CONFIRMED">Confirmed</option>
               <option value="IN_PROGRESS">In Progress</option>
               <option value="COMPLETED">Completed</option>
+              <option value="RESCHEDULED">Rescheduled</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
@@ -268,8 +314,8 @@ export default function ServiceManagerBookings() {
                 <th>Service</th>
                 <th>Assigned Mechanic</th>
                 <th>Date & Time</th>
-                <th>Amount</th>
                 <th>Status</th>
+                <th>Invoice</th>
                 <th style={{ textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
@@ -282,6 +328,7 @@ export default function ServiceManagerBookings() {
                   const vehTitle = b.vehicle ? `${b.vehicle.make || ''} ${b.vehicle.model || ''}`.trim() : 'Vehicle';
                   const regNum = b.vehicle?.registrationNumber || '';
                   const srvName = b.service?.name || 'Service';
+                  const allowedNext = getAllowedNextStatuses(b.status);
 
                   return (
                     <tr key={bId}>
@@ -306,7 +353,12 @@ export default function ServiceManagerBookings() {
                           </span>
                         )}
                       </td>
-                      <td>{srvName}</td>
+                      <td>
+                        {srvName}
+                        <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-dark)' }}>
+                          {formatCurrency(b.service?.price || b.amount || 0)}
+                        </span>
+                      </td>
                       <td>
                         {b.mechanic ? (
                           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#2563EB', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>
@@ -324,13 +376,39 @@ export default function ServiceManagerBookings() {
                           {b.bookingTime || 'N/A'}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>
-                        {formatCurrency(b.service?.price || b.amount || 0)}
-                      </td>
                       <td>
                         <span className="status-badge" style={{ backgroundColor: badge.bg, color: badge.color, display: 'inline-flex' }}>
                           {badge.label}
                         </span>
+                      </td>
+                      <td>
+                        {b.invoice ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#8B5CF6' }}>
+                              {b.invoice.invoiceNumber}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-card-secondary"
+                              onClick={() => handleDownloadPdf(b.invoice._id || b.invoice.id)}
+                              disabled={downloadingInvoiceId === (b.invoice._id || b.invoice.id)}
+                              style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              {downloadingInvoiceId === (b.invoice._id || b.invoice.id) ? (
+                                <Loader2 size={12} className="spinning-loader" style={{ animation: 'spin 1s linear infinite' }} />
+                              ) : (
+                                <Download size={12} />
+                              )}
+                              PDF
+                            </button>
+                          </div>
+                        ) : b.status === 'COMPLETED' ? (
+                          <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 600 }}>
+                            Invoice Generated
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>—</span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
@@ -343,24 +421,28 @@ export default function ServiceManagerBookings() {
                           >
                             <Eye size={15} />
                           </button>
-                          <button
-                            type="button"
-                            className="btn-card-secondary"
-                            onClick={() => handleOpenAssignModal(b)}
-                            style={{ padding: '0.3rem 0.5rem' }}
-                            title="Assign Mechanic"
-                          >
-                            <UserCheck size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-card-secondary"
-                            onClick={() => handleOpenStatusModal(b)}
-                            style={{ padding: '0.3rem 0.5rem' }}
-                            title="Update Status"
-                          >
-                            <Clock size={15} />
-                          </button>
+                          {b.status !== 'COMPLETED' && b.status !== 'CANCELLED' && (
+                            <button
+                              type="button"
+                              className="btn-card-secondary"
+                              onClick={() => handleOpenAssignModal(b)}
+                              style={{ padding: '0.3rem 0.5rem' }}
+                              title="Assign Mechanic"
+                            >
+                              <UserCheck size={15} />
+                            </button>
+                          )}
+                          {allowedNext.length > 0 && (
+                            <button
+                              type="button"
+                              className="btn-card-secondary"
+                              onClick={() => handleOpenStatusModal(b)}
+                              style={{ padding: '0.3rem 0.5rem' }}
+                              title="Update Status"
+                            >
+                              <Clock size={15} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -410,7 +492,7 @@ export default function ServiceManagerBookings() {
                   <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 700 }}>{formatCurrency(viewingBooking.service?.price || viewingBooking.amount)}</span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Assigned Mechanic</span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Assigned Technician</span>
                   <strong style={{ display: 'block', color: viewingBooking.mechanic ? '#2563EB' : 'var(--text-secondary)' }}>
                     {viewingBooking.mechanic ? viewingBooking.mechanic.name : 'Unassigned'}
                   </strong>
@@ -422,6 +504,25 @@ export default function ServiceManagerBookings() {
                 <div style={{ fontWeight: 600 }}>{viewingBooking.serviceCenter?.name || 'Workshop'}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{viewingBooking.serviceCenter?.address}, {viewingBooking.serviceCenter?.city}</div>
               </div>
+
+              {viewingBooking.invoice && (
+                <div style={{ backgroundColor: 'rgba(139, 92, 246, 0.08)', padding: '0.85rem', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Auto-Generated Invoice</span>
+                    <strong style={{ display: 'block', color: '#8B5CF6' }}>{viewingBooking.invoice.invoiceNumber}</strong>
+                    <span style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 600 }}>Total: {formatCurrency(viewingBooking.invoice.total)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-card-primary"
+                    onClick={() => handleDownloadPdf(viewingBooking.invoice._id || viewingBooking.invoice.id)}
+                    disabled={downloadingInvoiceId === (viewingBooking.invoice._id || viewingBooking.invoice.id)}
+                    style={{ backgroundColor: '#8B5CF6', borderColor: '#8B5CF6', padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
+                  >
+                    <Download size={14} style={{ marginRight: '0.3rem' }} /> Download PDF
+                  </button>
+                </div>
+              )}
 
               {viewingBooking.notes && (
                 <div>
@@ -466,11 +567,16 @@ export default function ServiceManagerBookings() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-light)', borderRadius: '8px', fontSize: '0.85rem' }}>
                   <strong>Booking #{assigningBooking._id?.substring(assigningBooking._id.length - 6).toUpperCase()}</strong> - {assigningBooking.service?.name}
+                  {assigningBooking.status === 'PENDING' && (
+                    <span style={{ display: 'block', color: '#10B981', marginTop: '0.3rem', fontSize: '0.78rem', fontWeight: 600 }}>
+                      Note: Assigning a technician will automatically confirm this booking (PENDING → CONFIRMED).
+                    </span>
+                  )}
                 </div>
 
                 <div>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', display: 'block', marginBottom: '0.3rem' }}>
-                    Select Mechanic *
+                    Select Technician *
                   </label>
                   <select
                     className="form-control"
@@ -508,7 +614,7 @@ export default function ServiceManagerBookings() {
             <div className="modal-header">
               <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Clock size={20} color="#8B5CF6" />
-                Update Booking Status
+                Advance Service Status
               </h3>
               <button type="button" className="modal-close-btn" onClick={() => setUpdatingStatusBooking(null)}>
                 <X size={20} />
@@ -523,31 +629,48 @@ export default function ServiceManagerBookings() {
 
             <form onSubmit={handleStatusSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', display: 'block', marginBottom: '0.3rem' }}>
-                    Select New Status *
-                  </label>
-                  <select
-                    className="form-control"
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                  >
-                    <option value="PENDING">PENDING</option>
-                    <option value="CONFIRMED">CONFIRMED</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                    <option value="COMPLETED">COMPLETED</option>
-                    <option value="CANCELLED">CANCELLED</option>
-                  </select>
+                <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-light)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  Current Status: <strong style={{ color: '#8B5CF6' }}>{updatingStatusBooking.status}</strong>
+                  {updatingStatusBooking.status === 'IN_PROGRESS' && (
+                    <span style={{ display: 'block', color: '#10B981', marginTop: '0.3rem', fontSize: '0.78rem', fontWeight: 600 }}>
+                      Note: Marking as COMPLETED will automatically generate a customer invoice.
+                    </span>
+                  )}
                 </div>
+
+                {getAllowedNextStatuses(updatingStatusBooking.status).length > 0 ? (
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', display: 'block', marginBottom: '0.3rem' }}>
+                      Select Next Allowed Status *
+                    </label>
+                    <select
+                      className="form-control"
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                    >
+                      {getAllowedNextStatuses(updatingStatusBooking.status).map((st) => (
+                        <option key={st} value={st}>
+                          {st === 'CONFIRMED' ? 'CONFIRMED (Confirm Appointment)' : st === 'IN_PROGRESS' ? 'IN_PROGRESS (Start Service Work)' : st === 'COMPLETED' ? 'COMPLETED (Finish Service & Invoice)' : st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', padding: '0.5rem' }}>
+                    This booking is in state <strong>{updatingStatusBooking.status}</strong>. No further status changes are permitted.
+                  </p>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                 <button type="button" className="btn-card-secondary" onClick={() => setUpdatingStatusBooking(null)} disabled={isSubmitting}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-card-primary" disabled={isSubmitting} style={{ backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }}>
-                  {isSubmitting ? 'Saving...' : 'Save Status'}
-                </button>
+                {getAllowedNextStatuses(updatingStatusBooking.status).length > 0 && (
+                  <button type="submit" className="btn-card-primary" disabled={isSubmitting} style={{ backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }}>
+                    {isSubmitting ? 'Saving...' : 'Update Status'}
+                  </button>
+                )}
               </div>
             </form>
           </div>
