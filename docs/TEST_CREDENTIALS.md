@@ -1,8 +1,8 @@
-# CarFix - Local Test Account Credentials
+# Car Repairing and Services — Test Credentials & Account Reference
 
 > [!IMPORTANT]  
 > **LOCAL DEVELOPMENT / TESTING ONLY**  
-> These credentials are provided solely for local testing and demonstration. Never use these credentials or simple passwords in production environments.
+> These credentials are provided solely for local testing and demonstration. Never use simple passwords or test credentials in production environments.
 
 ---
 
@@ -14,25 +14,33 @@
 
 ---
 
-## Customer Test Account
-
-| Role | Email | Password | Purpose |
-| :--- | :--- | :--- | :--- |
-| **`CUSTOMER`** | `customer.test@carfix.com` | `Customer123!` | Customer service booking, vehicle CRUD, booking cancellation, invoice downloading, and profile updates. |
-
----
-
 ## Mechanic Test Account
 
-| Role | Email | Password | Purpose |
-| :--- | :--- | :--- | :--- |
-| **`MECHANIC`** | `mechanic.test@carfix.com` | `Mechanic123!` | Assigned job tracking and service status updates. |
+| Role | Email | Password | Assigned Service Center | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`MECHANIC`** | `mechanic.test@carfix.com` | `Mechanic123!` | CarFix Pune – Baner Hub | Mechanic assigned job queue, service status updates, work notes logging, and PDF invoice testing. |
 
 ---
 
-## Test Seeding Script
+## Customer Test Account
 
-To reset or seed test accounts and sample booking data in your local environment, run:
+| Role | Email | Password | Scope | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`CUSTOMER`** | `customer.test@carfix.com` | `Customer123!` | Personal Vehicles & Bookings | Customer vehicle creation, service booking, cancellation, service history, and PDF invoice downloads. |
+
+---
+
+## Admin Test Account
+
+| Role | Email | Password | Scope | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`ADMIN`** | `admin.test@carfix.com` | `Admin123!` | System-wide | Full administrative access to users, service centers, catalog items, and analytics. |
+
+---
+
+## Setup / Reset Test Accounts Script
+
+To populate or reset these dedicated test accounts in your local MongoDB database, run:
 
 ```bash
 cd backend
