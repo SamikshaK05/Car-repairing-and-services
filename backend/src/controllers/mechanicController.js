@@ -12,9 +12,8 @@ export const getMechanicDashboard = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Filter jobs assigned to this mechanic, or general workload if no jobs assigned to this mechanic yet
-    const assignedCount = await Booking.countDocuments({ mechanic: mechanicId });
-    const mechanicFilter = assignedCount > 0 ? { mechanic: mechanicId } : {};
+    // Strictly filter jobs assigned to this mechanic
+    const mechanicFilter = { mechanic: mechanicId };
 
     // Parallel database queries for performance
     const [

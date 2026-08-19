@@ -43,10 +43,7 @@ export const getBookings = async (req, res) => {
       const mgrCenter = req.user.serviceCenter._id ? req.user.serviceCenter._id.toString() : req.user.serviceCenter.toString();
       filter.serviceCenter = mgrCenter;
     } else if (req.user && req.user.role === 'MECHANIC') {
-      const assignedCount = await Booking.countDocuments({ mechanic: req.user._id });
-      if (assignedCount > 0) {
-        filter.mechanic = req.user._id;
-      }
+      filter.mechanic = req.user._id;
     } else if (user) {
       if (!mongoose.Types.ObjectId.isValid(user)) {
         return res.status(400).json({
@@ -228,7 +225,7 @@ export const getBookingById = async (req, res) => {
           ? booking.mechanic._id.toString()
           : booking.mechanic.toString()
         : null;
-      if (mechId && mechId !== req.user._id.toString()) {
+      if (!mechId || mechId !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to access this booking',

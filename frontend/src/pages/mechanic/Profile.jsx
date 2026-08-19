@@ -1,10 +1,23 @@
-import { useState } from 'react';
-import { User, Mail, Phone, ShieldCheck, CheckCircle2, Loader2, Wrench, Calendar, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Mail, Phone, ShieldCheck, CheckCircle2, Loader2, Wrench, Calendar, MapPin, Save, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { updateProfile } from '../../api/auth.api';
 
 export default function MechanicProfile() {
-  const { user, loading } = useAuth();
+  const { user, loading, checkAuth } = useAuth();
+  const [formData, setFormData] = useState({ name: '', phone: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [infoMsg, setInfoMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -23,6 +36,38 @@ export default function MechanicProfile() {
     createdAt: new Date(),
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || formData.name.trim() === '') {
+      setErrorMsg('Name is required.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMsg('');
+      setInfoMsg('');
+
+      const response = await updateProfile({
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+      });
+
+      if (response && response.success) {
+        setInfoMsg('Profile information updated successfully.');
+        setTimeout(() => setInfoMsg(''), 4000);
+        if (checkAuth) await checkAuth();
+      } else {
+        throw new Error(response?.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err.message);
+      setErrorMsg(err.data?.message || err.message || 'Failed to update profile.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const memberSinceDate = currentUser.createdAt
     ? new Date(currentUser.createdAt).toLocaleDateString('en-IN', {
         month: 'long',
@@ -37,7 +82,7 @@ export default function MechanicProfile() {
           Mechanic Profile
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-          View your technician account details and security credentials.
+          View and manage your technician contact profile and security credentials.
         </p>
       </div>
 
@@ -50,9 +95,15 @@ export default function MechanicProfile() {
         </div>
       )}
 
+      {errorMsg && (
+        <div style={{ padding: '0.85rem 1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: '10px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <AlertCircle size={18} /> {errorMsg}
+        </div>
+      )}
+
       {/* PROFILE DETAILS GRID */}
       <div className="profile-grid">
-        {/* PERSONAL & CONTACT INFORMATION */}
+        {/* EDITABLE PERSONAL INFORMATION */}
         <div
           style={{
             backgroundColor: 'var(--white)',
@@ -69,31 +120,56 @@ export default function MechanicProfile() {
             Technician Details
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="profile-field-row" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-              <User size={20} color="#3B82F6" />
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Full Name</span>
-                <strong style={{ fontSize: '1.05rem', color: 'var(--primary-dark)' }}>{currentUser.name}</strong>
-              </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', display: 'block', marginBottom: '0.3rem' }}>
+                Full Name *
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
             </div>
 
-            <div className="profile-field-row" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-              <Mail size={20} color="#3B82F6" />
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Email Address</span>
-                <strong style={{ fontSize: '1.05rem', color: 'var(--primary-dark)' }}>{currentUser.email}</strong>
-              </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', display: 'block', marginBottom: '0.3rem' }}>
+                Email Address (Read Only)
+              </label>
+              <input
+                type="email"
+                className="form-control"
+                disabled
+                value={currentUser.email}
+                style={{ backgroundColor: 'var(--bg-light)', cursor: 'not-allowed' }}
+              />
             </div>
 
-            <div className="profile-field-row" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-              <Phone size={20} color="#3B82F6" />
-              <div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Contact Phone</span>
-                <strong style={{ fontSize: '1.05rem', color: 'var(--primary-dark)' }}>{currentUser.phone || 'N/A'}</strong>
-              </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', display: 'block', marginBottom: '0.3rem' }}>
+                Contact Phone
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+91 98765 00000"
+              />
             </div>
-          </div>
+
+            <button
+              type="submit"
+              className="btn-card-primary"
+              disabled={isSubmitting}
+              style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+            >
+              {isSubmitting ? <Loader2 size={16} className="spinning-loader" style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+              Save Profile Changes
+            </button>
+          </form>
         </div>
 
         {/* ACCOUNT ROLE & AUTHORIZATION */}

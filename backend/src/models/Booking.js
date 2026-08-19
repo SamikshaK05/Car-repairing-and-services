@@ -53,6 +53,11 @@ const bookingSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
+    workNotes: {
+      type: String,
+      default: null,
+      trim: true,
+    },
   },
   {
     timestamps: true,
