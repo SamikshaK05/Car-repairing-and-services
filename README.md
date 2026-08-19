@@ -1,6 +1,6 @@
-# CarFix – Car Repairing & Service Management System
+# Car Repairing and Services Management System (CarFix)
 
-CarFix is an end-to-end, full-stack automotive service booking, vehicle management, and service center management platform built with React, Node.js, Express, and MongoDB.
+CarRepairing & Services (CarFix) is an end-to-end, full-stack automotive service booking, vehicle management, and service center management platform built with React, Node.js, Express, and MongoDB.
 
 ---
 
