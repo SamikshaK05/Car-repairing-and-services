@@ -1,39 +1,15 @@
 import dotenv from 'dotenv';
-import dns from 'dns';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import connectDB from './src/config/database.js';
+import User from './src/models/User.js';
+import app from './src/app.js';
 
 dotenv.config();
-
-const dnsServer = process.env.DNS_SERVER;
-const servers = ['1.1.1.1', '8.8.8.8'];
-if (dnsServer && dnsServer.trim() && !servers.includes(dnsServer.trim())) {
-  servers.push(dnsServer.trim());
-}
-try {
-  dns.setServers(servers);
-} catch (err) {}
-
-const { default: mongoose } = await import('mongoose');
-const { connectDB, configureDNS } = await import('./src/config/database.js');
-const { default: User } = await import('./src/models/User.js');
-const { default: app } = await import('./src/app.js');
 
 let server;
 const PORT = 5099;
 const BASE_URL = `http://localhost:${PORT}`;
-
-async function safeConnectDB() {
-  configureDNS();
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const uri = process.env.MONGODB_URI;
-      return await mongoose.connect(uri);
-    } catch (err) {
-      if (attempt === 3) throw err;
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-  }
-}
 
 async function runTests() {
   console.log('==================================================');
@@ -54,7 +30,7 @@ async function runTests() {
   };
 
   try {
-    await safeConnectDB();
+    await connectDB();
     server = app.listen(PORT);
 
     // 1. Missing Token Test
