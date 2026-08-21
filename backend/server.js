@@ -26,8 +26,8 @@ const startServer = async () => {
     // 3. Connect to MongoDB
     await connectDB();
 
-    // 4. Start Express server only after MongoDB connects
-    app.listen(PORT, () => {
+    // 4. Start Express server bound to 0.0.0.0 for cloud host compatibility
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`CarFix Backend Server running on port ${PORT}`);
     });
   } catch (error) {

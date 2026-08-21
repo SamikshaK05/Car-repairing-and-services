@@ -12,6 +12,12 @@ export const loginUser = async (credentials) => {
   return apiClient.post('/auth/login', credentials);
 };
 
+// @desc    Authenticate or register with Google OAuth ID token
+// @endpoint POST /api/auth/google
+export const googleLoginUser = async (payload) => {
+  return apiClient.post('/auth/google', payload);
+};
+
 // @desc    Get authenticated user profile
 // @endpoint GET /api/auth/me
 export const getCurrentUser = async () => {

@@ -20,7 +20,7 @@ dotenv.config();
 const app = express();
 
 // Configure CORS for frontend communication
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 app.use(
   cors({
     origin: clientUrl,

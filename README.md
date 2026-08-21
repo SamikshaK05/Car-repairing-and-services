@@ -185,12 +185,18 @@ npm run dev
 | `MONGODB_URI` | MongoDB connection string | `mongodb+srv://...` |
 | `JWT_SECRET` | Secret key for JWT signing | `carfix_jwt_super_secret_key_2026_dev` |
 | `JWT_EXPIRES_IN` | JWT token validity duration | `7d` |
+| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 Client ID | `your_google_client_id_here` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 Client Secret | `your_google_client_secret_here` |
+| `GOOGLE_CALLBACK_URL` | Google OAuth callback URL | `http://localhost:5173` |
 
 ### Frontend (`frontend/.env`)
 
 | Variable | Description | Default / Example |
 | :--- | :--- | :--- |
 | `VITE_API_URL` | Base API URL | `http://localhost:5000/api` |
+| `VITE_GOOGLE_CLIENT_ID` | Public Google Client ID | `your_google_client_id_here` |
+
+> Refer to [`docs/GOOGLE_AUTHENTICATION_SETUP.md`](docs/GOOGLE_AUTHENTICATION_SETUP.md) for full Google Cloud Console configuration steps.
 
 ---
 
