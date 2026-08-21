@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { sendEmail } from '../utils/sendEmail.js';
 
@@ -327,8 +328,8 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes validity
     await user.save();
 
-    // Construct reset link using trusted CLIENT_URL environment variable
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    // Construct password reset link
+    const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${clientUrl.replace(/\/$/, '')}/reset-password/${rawToken}`;
 
     const htmlContent = `
@@ -510,3 +511,143 @@ export const changePassword = async (req, res) => {
     });
   }
 };
+
+// @desc    Authenticate or register via Google OAuth
+// @route   POST /api/auth/google
+export const googleAuth = async (req, res) => {
+  try {
+    const { idToken, credential } = req.body;
+    const tokenToVerify = idToken || credential;
+
+    if (!tokenToVerify) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google ID token or credential is required',
+      });
+    }
+
+    let googleUser = null;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+
+    if (clientId) {
+      try {
+        const client = new OAuth2Client(clientId);
+        const ticket = await client.verifyIdToken({
+          idToken: tokenToVerify,
+          audience: clientId,
+        });
+        const payload = ticket.getPayload();
+        googleUser = {
+          googleId: payload.sub,
+          email: payload.email,
+          name: payload.name || payload.email.split('@')[0],
+          picture: payload.picture || null,
+        };
+      } catch (err) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid or expired Google token',
+        });
+      }
+    } else {
+      // Development / Test mode without configured GOOGLE_CLIENT_ID
+      try {
+        const decoded = jwt.decode(tokenToVerify);
+        if (decoded && decoded.email && (decoded.sub || decoded.googleId)) {
+          googleUser = {
+            googleId: decoded.sub || decoded.googleId,
+            email: decoded.email,
+            name: decoded.name || decoded.email.split('@')[0],
+            picture: decoded.picture || null,
+          };
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'GOOGLE_CLIENT_ID environment variable is missing and token verification failed',
+          });
+        }
+      } catch (err) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid Google token',
+        });
+      }
+    }
+
+    if (!googleUser || !googleUser.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google token does not contain a valid email address',
+      });
+    }
+
+    const normalizedEmail = googleUser.email.trim().toLowerCase();
+
+    // 1. Check if user exists by googleId or email
+    let user = await User.findOne({
+      $or: [{ googleId: googleUser.googleId }, { email: normalizedEmail }],
+    });
+
+    if (user) {
+      // Prevent inactive users from authenticating
+      if (user.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Account has been deactivated. Please contact support.',
+        });
+      }
+
+      // Update googleId and avatar if missing
+      let modified = false;
+      if (!user.googleId) {
+        user.googleId = googleUser.googleId;
+        modified = true;
+      }
+      if (googleUser.picture && !user.avatar) {
+        user.avatar = googleUser.picture;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    } else {
+      // Create new customer account for Google user
+      user = await User.create({
+        name: googleUser.name,
+        email: normalizedEmail,
+        googleId: googleUser.googleId,
+        authProvider: 'google',
+        avatar: googleUser.picture || null,
+        phone: '',
+        role: 'CUSTOMER',
+        isActive: true,
+      });
+    }
+
+    const token = generateToken(user._id, user.role);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Google authentication successful',
+      data: {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          avatar: user.avatar,
+          authProvider: user.authProvider,
+        },
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('Error in googleAuth:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error during Google authentication',
+    });
+  }
+};
+

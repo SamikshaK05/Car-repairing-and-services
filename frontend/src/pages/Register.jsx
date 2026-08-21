@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, CheckCircle2, AlertCircle } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import AuthLayout from '../components/AuthLayout';
 import PasswordInput from '../components/PasswordInput';
 import { useAuth } from '../context/AuthContext';
+import { getDashboardPath } from '../components/ProtectedRoute';
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -160,6 +162,33 @@ export default function Register() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    if (!credentialResponse?.credential) {
+      setApiError('Google sign up failed: No ID token returned');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setApiError('');
+
+    try {
+      const response = await googleLogin({ credential: credentialResponse.credential });
+      const loggedInUser = response.data?.user || response.user;
+      const role = loggedInUser?.role || 'CUSTOMER';
+      const redirectPath = getDashboardPath(role);
+      navigate(redirectPath, { replace: true });
+    } catch (err) {
+      const errorMsg = err.data?.message || err.message || 'Google registration failed.';
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setApiError('Google registration was cancelled or failed.');
   };
 
   return (
@@ -357,6 +386,24 @@ export default function Register() {
             {isSubmitting ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
+
+        {/* Social Login UI */}
+        <div className="social-login-divider">
+          <span>OR</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '0.75rem 0' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            useOneTap
+            shape="rectangular"
+            theme="filled_black"
+            size="large"
+            text="signup_with"
+            width="100%"
+          />
+        </div>
 
         <div className="auth-footer-nav">
           Already have an account? <Link to="/login">Sign In</Link>

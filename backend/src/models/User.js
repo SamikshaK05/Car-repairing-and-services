@@ -16,12 +16,26 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
+      required: function () {
+        return this.authProvider === 'local';
+      },
       trim: true,
+      default: '',
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return this.authProvider === 'local';
+      },
+    },
+    googleId: {
+      type: String,
+      default: null,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
     },
     role: {
       type: String,
