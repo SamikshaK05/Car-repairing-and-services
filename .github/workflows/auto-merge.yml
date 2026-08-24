@@ -1,4 +1,4 @@
-name: Auto Merge to Development Branch
+name: Auto Merge Module Branches to Development
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ on:
 
 jobs:
   auto-merge:
-    name: Auto Merge PRs
+    name: Auto Merge PRs to Development
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,7 +33,7 @@ jobs:
             if (context.eventName === 'pull_request') {
               prNumber = context.payload.pull_request.number;
             } else if (context.eventName === 'workflow_run') {
-              // Check if CI passed
+              // Only proceed if CI pipeline passed
               if (context.payload.workflow_run.conclusion !== 'success') {
                 console.log('CI Pipeline did not pass successfully. Skipping auto-merge.');
                 return;
@@ -71,7 +71,7 @@ jobs:
             }
 
             try {
-              console.log(`Auto-merging PR #${prNumber}: ${pr.title}`);
+              console.log(`Auto-merging PR #${prNumber} (${pr.head.ref} -> development): ${pr.title}`);
               await github.rest.pulls.merge({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
