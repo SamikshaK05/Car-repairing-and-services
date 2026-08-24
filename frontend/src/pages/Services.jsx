@@ -19,6 +19,7 @@ import {
   ArrowRight,
   AlertCircle,
   Loader2,
+  Search,
 } from 'lucide-react';
 
 import ServiceCard from '../components/ServiceCard';
