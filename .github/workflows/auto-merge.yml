@@ -1,0 +1,84 @@
+name: Auto Merge to Development Branch
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    branches:
+      - development
+  workflow_run:
+    workflows: ["CarFix CI Pipeline"]
+    types:
+      - completed
+
+jobs:
+  auto-merge:
+    name: Auto Merge PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Auto-merge Pull Request to Development
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let prNumber;
+
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'workflow_run') {
+              // Check if CI passed
+              if (context.payload.workflow_run.conclusion !== 'success') {
+                console.log('CI Pipeline did not pass successfully. Skipping auto-merge.');
+                return;
+              }
+              const prs = context.payload.workflow_run.pull_requests;
+              if (prs && prs.length > 0) {
+                prNumber = prs[0].number;
+              }
+            }
+
+            if (!prNumber) {
+              console.log('No eligible Pull Request found for auto-merge.');
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            if (pr.base.ref !== 'development') {
+              console.log(`PR #${prNumber} target branch is '${pr.base.ref}', not 'development'. Skipping.`);
+              return;
+            }
+
+            if (pr.draft) {
+              console.log(`PR #${prNumber} is in draft mode. Skipping.`);
+              return;
+            }
+
+            if (pr.state !== 'open') {
+              console.log(`PR #${prNumber} state is '${pr.state}'. Skipping.`);
+              return;
+            }
+
+            try {
+              console.log(`Auto-merging PR #${prNumber}: ${pr.title}`);
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'merge'
+              });
+              console.log(`Successfully merged PR #${prNumber} into development.`);
+            } catch (err) {
+              console.log(`Auto-merge skipped or failed for PR #${prNumber}: ${err.message}`);
+            }
